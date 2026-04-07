@@ -203,15 +203,51 @@ def get_existing_urls() -> set[str]:
 
 
 def get_contract_jobs() -> list[dict]:
-    """Return jobs likely involving contract/W2/C2C work, excluding skipped/submitted."""
+    """Return jobs that are actual contract/W2 positions, not just jobs
+    mentioning 'contract' in legal boilerplate.
+
+    Matches specific patterns that indicate contract employment type:
+    - Title contains 'contract' (e.g. 'Contract Software Engineer')
+    - Description mentions contract duration ('6 month contract', '12-month engagement')
+    - Description mentions contract-to-hire / temp-to-perm
+    - Description mentions W2 hourly/rate
+    - Description says 'contract position' / 'contract role' / 'contract opportunity'
+    """
     conn = get_connection()
     try:
         rows = conn.execute(
             """SELECT * FROM jobs
-               WHERE (LOWER(title) LIKE '%contract%' OR LOWER(description) LIKE '%contract%'
-                      OR LOWER(description) LIKE '%w2%' OR LOWER(description) LIKE '%w-2%'
-                      OR LOWER(title) LIKE '%c2c%' OR LOWER(description) LIKE '%corp to corp%')
-                 AND status NOT IN ('skipped', 'submitted')
+               WHERE status NOT IN ('skipped', 'submitted')
+                 AND (
+                     -- Title explicitly says contract
+                     LOWER(title) LIKE '%contract%'
+                     -- Contract duration patterns
+                     OR LOWER(description) LIKE '%month contract%'
+                     OR LOWER(description) LIKE '%year contract%'
+                     OR LOWER(description) LIKE '%week contract%'
+                     OR LOWER(description) LIKE '%month engagement%'
+                     OR LOWER(description) LIKE '%contract-to-hire%'
+                     OR LOWER(description) LIKE '%contract to hire%'
+                     OR LOWER(description) LIKE '%temp-to-perm%'
+                     OR LOWER(description) LIKE '%temp to perm%'
+                     -- W2 rate indicators
+                     OR LOWER(description) LIKE '%w2 rate%'
+                     OR LOWER(description) LIKE '%w2 hourly%'
+                     OR LOWER(description) LIKE '%w-2 rate%'
+                     OR LOWER(description) LIKE '%w-2 hourly%'
+                     OR LOWER(description) LIKE '%hourly rate%on w2%'
+                     -- Explicit contract role language
+                     OR LOWER(description) LIKE '%contract position%'
+                     OR LOWER(description) LIKE '%contract role%'
+                     OR LOWER(description) LIKE '%contract opportunity%'
+                     OR LOWER(description) LIKE '%this is a contract%'
+                     OR LOWER(description) LIKE '%contract assignment%'
+                     OR LOWER(description) LIKE '%contract basis%'
+                     -- Duration-based patterns
+                     OR LOWER(description) LIKE '%initial term%'
+                     OR LOWER(description) LIKE '%contract duration%'
+                     OR LOWER(description) LIKE '%contract length%'
+                 )
                ORDER BY score DESC NULLS LAST, date_scraped DESC"""
         ).fetchall()
         return [dict(row) for row in rows]
