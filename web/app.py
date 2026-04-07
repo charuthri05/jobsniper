@@ -19,7 +19,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from utils.db import (
     init_db, get_job_by_id, get_jobs_by_status,
     get_queued_without_cl, get_queued_with_cl,
-    update_job, count_by_status,
+    update_job, count_by_status, get_contract_jobs,
 )
 from utils.profile import (
     load_profile, save_profile, validate_profile,
@@ -226,6 +226,71 @@ def api_scrape_progress():
 
 
 # ---------------------------------------------------------------------------
+# API — Score
+# ---------------------------------------------------------------------------
+
+_score_progress = {
+    "current": 0, "total": 0, "status": "idle", "message": "", "stats": None
+}
+
+
+@app.route("/api/score", methods=["POST"])
+def api_score():
+    """Trigger job scoring in a background thread."""
+    if _score_progress["status"] == "running":
+        return jsonify({"error": "Scoring already in progress"}), 409
+
+    _score_progress["current"] = 0
+    _score_progress["total"] = 2
+    _score_progress["status"] = "running"
+    _score_progress["message"] = "Starting scorer..."
+    _score_progress["stats"] = None
+
+    def run_score():
+        from pipeline.scorer import score_all_new_jobs
+        init_db()
+        profile = load_profile()
+        prefs = load_preferences()
+
+        # Step 1: Hard filters
+        _score_progress["current"] = 1
+        _score_progress["message"] = "Running hard filters and AI scoring..."
+
+        try:
+            stats = score_all_new_jobs(profile, prefs)
+            _score_progress["current"] = 2
+            _score_progress["stats"] = stats
+            _score_progress["message"] = (
+                f"Done: {stats.get('queued', 0)} queued, "
+                f"{stats.get('scored', 0)} scored, "
+                f"{stats.get('filtered_out', 0)} filtered out, "
+                f"{stats.get('errors', 0)} errors"
+            )
+        except Exception as e:
+            _score_progress["message"] = f"Scoring error: {e}"
+
+        _score_progress["status"] = "done"
+
+    thread = threading.Thread(target=run_score, daemon=True)
+    thread.start()
+    return jsonify({"status": "started"})
+
+
+@app.route("/api/score/progress")
+def api_score_progress():
+    """SSE endpoint for score progress."""
+    def stream():
+        import time
+        while True:
+            data = json.dumps(_score_progress)
+            yield f"data: {data}\n\n"
+            if _score_progress["status"] in ("done", "idle"):
+                break
+            time.sleep(0.5)
+    return Response(stream(), mimetype="text/event-stream")
+
+
+# ---------------------------------------------------------------------------
 # API — Job listing
 # ---------------------------------------------------------------------------
 
@@ -270,7 +335,7 @@ def _job_to_dict(job: dict) -> dict:
 
 @app.route("/api/jobs")
 def api_jobs():
-    """Fetch jobs by tab: queued, ready, submitted, skipped."""
+    """Fetch jobs by tab: queued, ready, submitted, skipped, new, scored, contract."""
     tab = request.args.get("tab", "queued")
 
     if tab == "queued":
@@ -281,6 +346,12 @@ def api_jobs():
         jobs = get_jobs_by_status("submitted")
     elif tab == "skipped":
         jobs = get_jobs_by_status("skipped")
+    elif tab == "new":
+        jobs = get_jobs_by_status("new")
+    elif tab == "scored":
+        jobs = get_jobs_by_status("scored")
+    elif tab == "contract":
+        jobs = get_contract_jobs()
     else:
         jobs = get_jobs_by_status("queued")
 
@@ -302,12 +373,15 @@ def api_stats():
     counts = count_by_status()
     queued_no_cl = len(get_queued_without_cl())
     queued_with_cl = len(get_queued_with_cl())
+    contract_count = len(get_contract_jobs())
     return jsonify({
         "queued": queued_no_cl,
         "ready": queued_with_cl,
         "submitted": counts.get("submitted", 0),
         "skipped": counts.get("skipped", 0),
         "scored": counts.get("scored", 0),
+        "new": counts.get("new", 0),
+        "contract": contract_count,
     })
 
 

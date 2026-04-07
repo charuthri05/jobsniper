@@ -45,6 +45,14 @@ async function loadStats() {
         document.getElementById('badge-queued').textContent = stats.queued;
         document.getElementById('badge-ready').textContent = stats.ready;
         document.getElementById('badge-submitted').textContent = stats.submitted;
+
+        // New tab badges
+        const badgeNew = document.getElementById('badge-new');
+        if (badgeNew) badgeNew.textContent = stats.new || 0;
+        const badgeScored = document.getElementById('badge-scored');
+        if (badgeScored) badgeScored.textContent = stats.scored || 0;
+        const badgeContract = document.getElementById('badge-contract');
+        if (badgeContract) badgeContract.textContent = stats.contract || 0;
     } catch (err) { /* silent */ }
 }
 
@@ -64,10 +72,10 @@ function switchTab(tab) {
     });
 
     // Show/hide action buttons based on tab
-    const isActionable = (tab === 'queued' || tab === 'ready');
+    const isActionable = (tab === 'queued' || tab === 'ready' || tab === 'new' || tab === 'scored' || tab === 'contract');
     document.getElementById('action-buttons').style.display = isActionable ? 'flex' : 'none';
 
-    // Generate button only on Queued tab, Submit available on both
+    // Generate button only on Queued tab, Submit available on actionable tabs
     document.getElementById('btn-generate').style.display = (tab === 'queued') ? 'inline-block' : 'none';
 
     loadJobs(tab);
@@ -726,6 +734,85 @@ function startScrape() {
             showToast('Failed to start scrape: ' + err.message, 'error');
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Scrape Jobs';
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Score Jobs
+// ---------------------------------------------------------------------------
+
+function startScore() {
+    showConfirm('Score all new jobs with AI? This may take a few minutes.', async () => {
+        const btn = document.getElementById('btn-score');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scoring...';
+
+        try {
+            const resp = await fetch('/api/score', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+            });
+
+            if (resp.status === 409) {
+                showToast('Scoring already in progress', 'warning');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-stars me-1"></i>Score Jobs';
+                return;
+            }
+
+            // Show progress bar
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            progressContainer.style.display = 'block';
+            progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+            document.getElementById('progress-label').textContent = 'Scoring jobs...';
+            document.getElementById('progress-count').textContent = '';
+            document.getElementById('progress-detail').textContent = '';
+
+            const evtSource = new EventSource('/api/score/progress');
+            evtSource.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                const pct = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
+                progressBar.style.width = pct + '%';
+                document.getElementById('progress-count').textContent = `Step ${data.current}/${data.total}`;
+                document.getElementById('progress-detail').textContent = data.message;
+
+                if (data.status === 'done') {
+                    evtSource.close();
+                    document.getElementById('progress-label').textContent = 'Scoring complete';
+                    progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                    progressBar.style.width = '100%';
+
+                    const stats = data.stats;
+                    const msg = stats
+                        ? `Scoring complete: ${stats.queued || 0} queued, ${stats.scored || 0} scored, ${stats.filtered_out || 0} filtered out`
+                        : data.message;
+
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-stars me-1"></i>Score Jobs';
+                        showToast(msg, 'success');
+                        loadJobs(currentTab);
+                        loadStats();
+                    }, 1500);
+                }
+            };
+
+            evtSource.onerror = () => {
+                evtSource.close();
+                progressContainer.style.display = 'none';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-stars me-1"></i>Score Jobs';
+                loadJobs(currentTab);
+                loadStats();
+            };
+
+        } catch (err) {
+            showToast('Failed to start scoring: ' + err.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-stars me-1"></i>Score Jobs';
         }
     });
 }

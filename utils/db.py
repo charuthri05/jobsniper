@@ -202,6 +202,23 @@ def get_existing_urls() -> set[str]:
         conn.close()
 
 
+def get_contract_jobs() -> list[dict]:
+    """Return jobs likely involving contract/W2/C2C work, excluding skipped/submitted."""
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """SELECT * FROM jobs
+               WHERE (LOWER(title) LIKE '%contract%' OR LOWER(description) LIKE '%contract%'
+                      OR LOWER(description) LIKE '%w2%' OR LOWER(description) LIKE '%w-2%'
+                      OR LOWER(title) LIKE '%c2c%' OR LOWER(description) LIKE '%corp to corp%')
+                 AND status NOT IN ('skipped', 'submitted')
+               ORDER BY score DESC NULLS LAST, date_scraped DESC"""
+        ).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
 def get_queued_without_cl() -> list[dict]:
     """Return queued jobs that do NOT have a cover letter."""
     conn = get_connection()

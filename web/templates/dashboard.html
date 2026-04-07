@@ -25,6 +25,9 @@
             <button class="btn btn-sm btn-outline-primary" id="btn-scrape" onclick="startScrape()" title="Scrape new jobs">
                 <i class="bi bi-cloud-download me-1"></i>Scrape Jobs
             </button>
+            <button class="btn btn-sm btn-outline-warning" id="btn-score" onclick="startScore()" title="Score new jobs with AI">
+                <i class="bi bi-stars me-1"></i>Score Jobs
+            </button>
             <a href="/setup" class="btn btn-sm btn-outline-secondary" title="Profile & Settings">
                 <i class="bi bi-gear"></i>
             </a>
@@ -54,6 +57,21 @@
             <li class="nav-item">
                 <button class="nav-link" data-tab="submitted" onclick="switchTab('submitted')">
                     Submitted <span class="badge bg-secondary-subtle text-secondary ms-1" id="badge-submitted">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-tab="new" onclick="switchTab('new')">
+                    New <span class="badge bg-info-subtle text-info ms-1" id="badge-new">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-tab="scored" onclick="switchTab('scored')">
+                    Scored <span class="badge bg-warning-subtle text-warning ms-1" id="badge-scored">0</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-tab="contract" onclick="switchTab('contract')">
+                    Contract <span class="badge bg-danger-subtle text-danger ms-1" id="badge-contract">0</span>
                 </button>
             </li>
         </ul>
