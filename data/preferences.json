@@ -1,0 +1,42 @@
+{
+  "target_roles": [
+    "Software Engineer",
+    "Senior Software Engineer",
+    "SWE",
+    "Backend Engineer",
+    "Full Stack Engineer",
+    "Founding Engineer"
+  ],
+  "target_companies": [],
+  "blacklist_companies": [],
+  "locations": [
+    "United States"
+  ],
+  "remote_only": false,
+  "min_salary": 130000,
+  "seniority_levels": [
+    "entry-level",
+    "mid",
+    "senior"
+  ],
+  "visa_sponsorship_required": true,
+  "greenhouse_boards": [
+    "stripe", "anthropic", "databricks", "airbnb", "figma", "vercel", "planetscale",
+    "coinbase", "brex", "reddit", "instacart", "robinhood", "duolingo",
+    "cloudflare", "datadog", "mongodb", "elastic", "pagerduty", "twilio", "okta",
+    "asana", "airtable", "squarespace", "dropbox", "hubspot", "gitlab",
+    "samsara", "toast", "gusto", "affirm", "chime", "sofi", "marqeta",
+    "lyft", "pinterest", "block", "deepmind", "discord",
+    "nubank", "mercury", "lithic", "treasuryprime", "melio", "upstart", "blend", "monzo",
+    "fivetran", "temporal", "clickhouse", "singlestore", "cockroachlabs",
+    "zscaler",
+    "poshmark", "veracyte",
+    "fastly", "netlify", "circleci", "launchdarkly", "amplitude", "mixpanel",
+    "shield",
+    "remote", "lattice", "cultureamp", "webflow", "contentful", "storyblok",
+    "waymo", "nuro"
+  ],
+  "lever_boards": [
+    "spotify"
+  ]
+}

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply — {{ job.title }} at {{ job.company }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8f9fa; }
+        .copy-field { position: relative; }
+        .copy-btn {
+            position: absolute; right: 8px; top: 8px;
+            background: white; border: 1px solid #dee2e6; border-radius: 6px;
+            padding: 2px 8px; font-size: 0.75rem; cursor: pointer;
+            color: #6c757d; transition: all 0.15s;
+        }
+        .copy-btn:hover { background: #e9ecef; color: #0d6efd; }
+        .copy-btn.copied { background: #d1e7dd; color: #0f5132; border-color: #a3cfbb; }
+        .field-value {
+            background: white; border: 1px solid #dee2e6; border-radius: 8px;
+            padding: 10px 14px; padding-right: 70px; font-family: monospace;
+            font-size: 0.9rem; word-break: break-all;
+        }
+        .field-value-lg {
+            background: white; border: 1px solid #dee2e6; border-radius: 8px;
+            padding: 14px; padding-right: 70px; font-size: 0.9rem;
+            white-space: pre-wrap; max-height: 300px; overflow-y: auto;
+        }
+        .section-card {
+            background: white; border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 16px;
+        }
+        .go-btn {
+            font-size: 1.1rem; padding: 14px 32px; border-radius: 10px;
+        }
+        .source-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; }
+    </style>
+</head>
+<body>
+
+<div class="container py-4" style="max-width: 900px;">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h4 class="mb-1">{{ job.title }}</h4>
+            <p class="text-muted mb-2">
+                {{ job.company }}
+                {% if job.location %} &middot; {{ job.location }}{% endif %}
+                {% if job.score %} &middot; Score: <strong>{{ job.score }}</strong>/100{% endif %}
+            </p>
+            <span class="badge source-badge bg-primary-subtle text-primary">{{ job.source or 'unknown' }}</span>
+            {% if job.cover_letter %}
+            <span class="badge source-badge bg-success-subtle text-success">Cover Letter Ready</span>
+            {% else %}
+            <span class="badge source-badge bg-warning-subtle text-warning">No Cover Letter</span>
+            {% endif %}
+        </div>
+        <a href="/" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Open Application Button -->
+    <div class="text-center mb-4">
+        <a href="{{ job.url }}" target="_blank" class="btn btn-success go-btn">
+            <i class="bi bi-box-arrow-up-right me-2"></i>Open Application Page
+        </a>
+        <p class="text-muted small mt-2">Opens in a new tab. Copy fields below and paste into the form.</p>
+    </div>
+
+    <!-- Personal Info -->
+    <div class="section-card">
+        <h6 class="text-muted mb-3"><i class="bi bi-person me-2"></i>Personal Information</h6>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label small text-muted">First Name</label>
+                <div class="copy-field">
+                    <div class="field-value" id="f-first-name">{{ first_name }}</div>
+                    <button class="copy-btn" onclick="copyField('f-first-name', this)">Copy</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">Last Name</label>
+                <div class="copy-field">
+                    <div class="field-value" id="f-last-name">{{ last_name }}</div>
+                    <button class="copy-btn" onclick="copyField('f-last-name', this)">Copy</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">Email</label>
+                <div class="copy-field">
+                    <div class="field-value" id="f-email">{{ profile.email }}</div>
+                    <button class="copy-btn" onclick="copyField('f-email', this)">Copy</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">Phone</label>
+                <div class="copy-field">
+                    <div class="field-value" id="f-phone">{{ profile.phone }}</div>
+                    <button class="copy-btn" onclick="copyField('f-phone', this)">Copy</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">Location</label>
+                <div class="copy-field">
+                    <div class="field-value" id="f-location">{{ profile.location }}</div>
+                    <button class="copy-btn" onclick="copyField('f-location', this)">Copy</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">LinkedIn</label>
+                <div class="copy-field">
+                    <div class="field-value" id="f-linkedin">{{ profile.linkedin }}</div>
+                    <button class="copy-btn" onclick="copyField('f-linkedin', this)">Copy</button>
+                </div>
+            </div>
+            <div class="col-12">
+                <label class="form-label small text-muted">GitHub / Portfolio</label>
+                <div class="copy-field">
+                    <div class="field-value" id="f-github">{{ profile.github }}</div>
+                    <button class="copy-btn" onclick="copyField('f-github', this)">Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cover Letter -->
+    <div class="section-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-muted mb-0"><i class="bi bi-envelope-paper me-2"></i>Cover Letter</h6>
+            {% if job.cover_letter %}
+            <button class="btn btn-sm btn-outline-primary" onclick="copyField('f-cover-letter', this)">
+                <i class="bi bi-clipboard me-1"></i>Copy All
+            </button>
+            {% endif %}
+        </div>
+        {% if job.cover_letter %}
+        <div class="copy-field">
+            <div class="field-value-lg" id="f-cover-letter">{{ job.cover_letter }}</div>
+        </div>
+        {% else %}
+        <p class="text-muted fst-italic mb-0">No cover letter generated for this job. You can go back to the dashboard to generate one, or apply without it.</p>
+        {% endif %}
+    </div>
+
+    <!-- Resume Bullets -->
+    {% if bullets %}
+    <div class="section-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-muted mb-0"><i class="bi bi-list-check me-2"></i>Tailored Resume Bullets</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="copyField('f-bullets', this)">
+                <i class="bi bi-clipboard me-1"></i>Copy All
+            </button>
+        </div>
+        <div class="copy-field">
+            <div class="field-value-lg" id="f-bullets">{% for b in bullets %}&bull; {{ b }}{% if not loop.last %}
+{% endif %}{% endfor %}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Summary -->
+    <div class="section-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-muted mb-0"><i class="bi bi-file-text me-2"></i>Professional Summary</h6>
+            <button class="btn btn-sm btn-outline-primary" onclick="copyField('f-summary', this)">
+                <i class="bi bi-clipboard me-1"></i>Copy
+            </button>
+        </div>
+        <div class="copy-field">
+            <div class="field-value-lg" id="f-summary">{{ profile.summary }}</div>
+        </div>
+    </div>
+
+    <!-- Score Info (collapsed) -->
+    {% if job.score_reason or strengths or missing %}
+    <div class="section-card">
+        <h6 class="text-muted mb-3"><i class="bi bi-bar-chart me-2"></i>Match Analysis</h6>
+        {% if job.score_reason %}
+        <p class="small mb-2">{{ job.score_reason }}</p>
+        {% endif %}
+        <div class="row">
+            {% if strengths %}
+            <div class="col-md-6">
+                <strong class="small text-success">Strengths</strong>
+                <ul class="small">
+                    {% for s in strengths %}<li>{{ s }}</li>{% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% if missing %}
+            <div class="col-md-6">
+                <strong class="small text-danger">Gaps to address</strong>
+                <ul class="small">
+                    {% for m in missing %}<li>{{ m }}</li>{% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Bottom CTA -->
+    <div class="text-center mb-5">
+        <a href="{{ job.url }}" target="_blank" class="btn btn-success go-btn">
+            <i class="bi bi-box-arrow-up-right me-2"></i>Open Application Page
+        </a>
+    </div>
+
+</div>
+
+<script>
+function copyField(elementId, btn) {
+    const el = document.getElementById(elementId);
+    const text = el.innerText || el.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.innerHTML = original;
+            btn.classList.remove('copied');
+        }, 1500);
+    });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Setup — Job Pipeline</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+    <style>
+        .setup-section {
+            background: white; border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            padding: 24px; margin-bottom: 20px;
+        }
+        .setup-section h6 { color: #6c757d; margin-bottom: 16px; }
+        .dynamic-entry {
+            border-left: 3px solid #0d6efd; background: #f8f9fa;
+            border-radius: 0 8px 8px 0; padding: 16px; margin-bottom: 12px;
+            position: relative;
+        }
+        .btn-remove-entry {
+            position: absolute; top: 8px; right: 8px;
+            background: none; border: none; color: #dc3545;
+            cursor: pointer; font-size: 1.1rem; padding: 2px 6px;
+        }
+        .btn-remove-entry:hover { background: #fee; border-radius: 4px; }
+        .tag-input { font-family: inherit; }
+        .save-bar {
+            position: sticky; bottom: 0; background: white;
+            border-top: 1px solid #dee2e6; padding: 16px 0;
+            z-index: 100; margin: 0 -12px; padding-left: 12px; padding-right: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg border-bottom bg-white sticky-top">
+    <div class="container-fluid px-4">
+        <span class="navbar-brand fw-bold">
+            <i class="bi bi-briefcase-fill text-primary me-2"></i>Job Pipeline
+        </span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small me-2">Profile & Settings</span>
+            <a href="/" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-4" style="max-width: 900px;">
+
+    <!-- Loading state -->
+    <div id="setup-loading" class="text-center py-5">
+        <div class="spinner-border text-primary"></div>
+        <p class="text-muted mt-2">Loading profile...</p>
+    </div>
+
+    <form id="setup-form" style="display:none;" onsubmit="return false;">
+
+        <!-- Basic Information -->
+        <div class="setup-section">
+            <h6><i class="bi bi-person me-2"></i>Basic Information</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small">Full Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="f-name" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Email <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="f-email" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Phone <span class="text-danger">*</span></label>
+                    <input type="tel" class="form-control" id="f-phone" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Location <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="f-location" placeholder="City, State">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">LinkedIn URL</label>
+                    <input type="url" class="form-control" id="f-linkedin" placeholder="https://linkedin.com/in/...">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">GitHub URL</label>
+                    <input type="url" class="form-control" id="f-github" placeholder="https://github.com/...">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Current Title <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="f-current-title" placeholder="Software Engineer">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Years of Experience <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="f-yoe" min="0" max="50">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small">Target Job Titles <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control tag-input" id="f-target-titles"
+                           placeholder="Software Engineer, Backend Engineer, Full Stack Engineer">
+                    <div class="form-text">Comma-separated list</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="setup-section">
+            <h6><i class="bi bi-card-text me-2"></i>Professional Summary</h6>
+            <textarea class="form-control" id="f-summary" rows="3"
+                      placeholder="2-3 sentence professional summary"></textarea>
+        </div>
+
+        <!-- Skills -->
+        <div class="setup-section">
+            <h6><i class="bi bi-tools me-2"></i>Skills</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small">Programming Languages</label>
+                    <input type="text" class="form-control tag-input" id="f-languages" placeholder="Python, Java, TypeScript">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Frameworks</label>
+                    <input type="text" class="form-control tag-input" id="f-frameworks" placeholder="React, Spring Boot, FastAPI">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Infrastructure / Cloud</label>
+                    <input type="text" class="form-control tag-input" id="f-infrastructure" placeholder="AWS, Docker, Kubernetes">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Databases</label>
+                    <input type="text" class="form-control tag-input" id="f-databases" placeholder="PostgreSQL, Redis, MongoDB">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small">Other Skills</label>
+                    <input type="text" class="form-control tag-input" id="f-other-skills" placeholder="distributed systems, system design, REST APIs">
+                </div>
+            </div>
+        </div>
+
+        <!-- Experience -->
+        <div class="setup-section">
+            <h6><i class="bi bi-building me-2"></i>Experience</h6>
+            <div id="experience-entries"></div>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addExperienceEntry()">
+                <i class="bi bi-plus-lg me-1"></i>Add Experience
+            </button>
+        </div>
+
+        <!-- Education -->
+        <div class="setup-section">
+            <h6><i class="bi bi-mortarboard me-2"></i>Education</h6>
+            <div id="education-entries"></div>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addEducationEntry()">
+                <i class="bi bi-plus-lg me-1"></i>Add Education
+            </button>
+        </div>
+
+        <!-- Raw Resume Text -->
+        <div class="setup-section">
+            <h6><i class="bi bi-file-earmark-text me-2"></i>Raw Resume Text</h6>
+            <p class="text-muted small mb-2">Paste your full resume as plain text. This is used by the AI for scoring and generation.</p>
+            <textarea class="form-control" id="f-resume-text" rows="8"
+                      placeholder="Paste your full resume text here..."></textarea>
+        </div>
+
+        <!-- Preferences -->
+        <div class="setup-section">
+            <h6><i class="bi bi-sliders me-2"></i>Job Search Preferences</h6>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label small">Target Roles</label>
+                    <input type="text" class="form-control tag-input" id="f-target-roles"
+                           placeholder="Software Engineer, Backend Engineer, Full Stack Engineer">
+                    <div class="form-text">Comma-separated. These are used as search queries.</div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small">Locations / Countries</label>
+                    <input type="text" class="form-control tag-input" id="f-locations"
+                           placeholder="United States, Canada, Remote">
+                    <div class="form-text">Comma-separated. Leave empty to search all locations. Examples: "United States", "United Kingdom", "Germany", "Remote", "San Francisco, CA"</div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small">Blacklisted Companies</label>
+                    <input type="text" class="form-control tag-input" id="f-blacklist"
+                           placeholder="Company A, Company B">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Minimum Salary ($)</label>
+                    <input type="number" class="form-control" id="f-min-salary" placeholder="130000">
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="f-visa">
+                        <label class="form-check-label small" for="f-visa">Visa Sponsorship Required</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="f-remote-only">
+                        <label class="form-check-label small" for="f-remote-only">Remote Only</label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small">Seniority Levels</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="f-seniority-entry" value="entry-level">
+                            <label class="form-check-label small" for="f-seniority-entry">Entry Level</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="f-seniority-mid" value="mid">
+                            <label class="form-check-label small" for="f-seniority-mid">Mid</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="f-seniority-senior" value="senior">
+                            <label class="form-check-label small" for="f-seniority-senior">Senior</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Greenhouse Boards</label>
+                    <textarea class="form-control tag-input" id="f-greenhouse" rows="3"
+                              placeholder="stripe, anthropic, databricks, airbnb, figma"></textarea>
+                    <div class="form-text">Comma-separated board tokens</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Lever Boards</label>
+                    <textarea class="form-control tag-input" id="f-lever" rows="3"
+                              placeholder="netflix, lyft, discord"></textarea>
+                    <div class="form-text">Comma-separated company slugs</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Bar -->
+        <div class="save-bar">
+            <div class="d-flex justify-content-between align-items-center">
+                <div id="save-status" class="text-muted small"></div>
+                <button type="button" class="btn btn-primary" id="btn-save" onclick="saveSetup()">
+                    <i class="bi bi-check-lg me-1"></i>Save Profile & Preferences
+                </button>
+            </div>
+        </div>
+
+    </form>
+</div>
+
+<!-- Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+    <div id="toast" class="toast" role="alert">
+        <div class="toast-body d-flex align-items-center gap-2">
+            <i id="toast-icon" class="bi"></i>
+            <span id="toast-message"></span>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function csvToArray(str) {
+    if (!str) return [];
+    return str.split(',').map(s => s.trim()).filter(s => s);
+}
+
+function arrayToCsv(arr) {
+    if (!arr || !Array.isArray(arr)) return '';
+    return arr.join(', ');
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    const icon = document.getElementById('toast-icon');
+    const msg = document.getElementById('toast-message');
+    msg.textContent = message;
+    toast.className = 'toast';
+    if (type === 'success') { toast.classList.add('text-bg-success'); icon.className = 'bi bi-check-circle-fill'; }
+    else if (type === 'error') { toast.classList.add('text-bg-danger'); icon.className = 'bi bi-exclamation-circle-fill'; }
+    else { toast.classList.add('text-bg-light'); icon.className = 'bi bi-info-circle-fill'; }
+    new bootstrap.Toast(toast, {delay: 3000}).show();
+}
+
+// ---------------------------------------------------------------------------
+// Load existing data
+// ---------------------------------------------------------------------------
+
+let expCounter = 0;
+let eduCounter = 0;
+
+document.addEventListener('DOMContentLoaded', loadSetupData);
+
+async function loadSetupData() {
+    try {
+        const resp = await fetch('/api/profile/full');
+        const data = await resp.json();
+        const p = data.profile || {};
+        const prefs = data.preferences || {};
+
+        // Basic info
+        document.getElementById('f-name').value = p.name || '';
+        document.getElementById('f-email').value = p.email || '';
+        document.getElementById('f-phone').value = p.phone || '';
+        document.getElementById('f-location').value = p.location || '';
+        document.getElementById('f-linkedin').value = p.linkedin || '';
+        document.getElementById('f-github').value = p.github || '';
+        document.getElementById('f-current-title').value = p.current_title || '';
+        document.getElementById('f-yoe').value = p.years_of_experience || '';
+        document.getElementById('f-target-titles').value = arrayToCsv(p.target_titles);
+
+        // Summary
+        document.getElementById('f-summary').value = p.summary || '';
+
+        // Skills
+        const skills = p.skills || {};
+        document.getElementById('f-languages').value = arrayToCsv(skills.languages);
+        document.getElementById('f-frameworks').value = arrayToCsv(skills.frameworks);
+        document.getElementById('f-infrastructure').value = arrayToCsv(skills.infrastructure);
+        document.getElementById('f-databases').value = arrayToCsv(skills.databases);
+        document.getElementById('f-other-skills').value = arrayToCsv(skills.other);
+
+        // Experience
+        const experience = p.experience || [];
+        if (experience.length > 0) {
+            experience.forEach(exp => addExperienceEntry(exp));
+        } else {
+            addExperienceEntry();
+        }
+
+        // Education
+        const education = p.education || [];
+        if (education.length > 0) {
+            education.forEach(edu => addEducationEntry(edu));
+        } else {
+            addEducationEntry();
+        }
+
+        // Raw resume
+        document.getElementById('f-resume-text').value = p.raw_resume_text || '';
+
+        // Preferences
+        document.getElementById('f-target-roles').value = arrayToCsv(prefs.target_roles);
+        document.getElementById('f-locations').value = arrayToCsv(prefs.locations);
+        document.getElementById('f-blacklist').value = arrayToCsv(prefs.blacklist_companies);
+        document.getElementById('f-min-salary').value = prefs.min_salary || '';
+        document.getElementById('f-visa').checked = prefs.visa_sponsorship_required || false;
+        document.getElementById('f-remote-only').checked = prefs.remote_only || false;
+        document.getElementById('f-greenhouse').value = arrayToCsv(prefs.greenhouse_boards);
+        document.getElementById('f-lever').value = arrayToCsv(prefs.lever_boards);
+
+        // Seniority checkboxes
+        const seniority = prefs.seniority_levels || [];
+        document.getElementById('f-seniority-entry').checked = seniority.includes('entry-level');
+        document.getElementById('f-seniority-mid').checked = seniority.includes('mid');
+        document.getElementById('f-seniority-senior').checked = seniority.includes('senior');
+
+        if (data.exists) {
+            document.getElementById('save-status').textContent = 'Profile loaded from existing data';
+        } else {
+            document.getElementById('save-status').textContent = 'No existing profile found — fill in your details';
+        }
+
+    } catch (e) {
+        showToast('Failed to load profile: ' + e.message, 'error');
+    }
+
+    document.getElementById('setup-loading').style.display = 'none';
+    document.getElementById('setup-form').style.display = 'block';
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic Experience Entries
+// ---------------------------------------------------------------------------
+
+function addExperienceEntry(data) {
+    const idx = expCounter++;
+    const container = document.getElementById('experience-entries');
+    const div = document.createElement('div');
+    div.className = 'dynamic-entry';
+    div.id = `exp-${idx}`;
+    div.innerHTML = `
+        <button type="button" class="btn-remove-entry" onclick="removeEntry('exp-${idx}')" title="Remove">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <div class="row g-2 mb-2">
+            <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm" placeholder="Job Title"
+                       value="${escapeAttr(data?.title || '')}" data-field="title">
+            </div>
+            <div class="col-md-4">
+                <input type="text" class="form-control form-control-sm" placeholder="Company"
+                       value="${escapeAttr(data?.company || '')}" data-field="company">
+            </div>
+            <div class="col-md-1.5">
+                <input type="text" class="form-control form-control-sm" placeholder="Start (YYYY-MM)"
+                       value="${escapeAttr(data?.start || '')}" data-field="start">
+            </div>
+            <div class="col-md-1.5">
+                <input type="text" class="form-control form-control-sm" placeholder="End"
+                       value="${escapeAttr(data?.end || 'present')}" data-field="end">
+            </div>
+        </div>
+        <textarea class="form-control form-control-sm" rows="4" placeholder="Bullet points (one per line)"
+                  data-field="bullets">${escapeAttr((data?.bullets || []).join('\n'))}</textarea>
+    `;
+    container.appendChild(div);
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic Education Entries
+// ---------------------------------------------------------------------------
+
+function addEducationEntry(data) {
+    const idx = eduCounter++;
+    const container = document.getElementById('education-entries');
+    const div = document.createElement('div');
+    div.className = 'dynamic-entry';
+    div.id = `edu-${idx}`;
+    div.innerHTML = `
+        <button type="button" class="btn-remove-entry" onclick="removeEntry('edu-${idx}')" title="Remove">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <div class="row g-2">
+            <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm" placeholder="Degree"
+                       value="${escapeAttr(data?.degree || '')}" data-field="degree">
+            </div>
+            <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm" placeholder="School"
+                       value="${escapeAttr(data?.school || '')}" data-field="school">
+            </div>
+            <div class="col-md-2">
+                <input type="number" class="form-control form-control-sm" placeholder="Year"
+                       value="${data?.year || ''}" data-field="year">
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+}
+
+function removeEntry(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+}
+
+function escapeAttr(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ---------------------------------------------------------------------------
+// Save
+// ---------------------------------------------------------------------------
+
+async function saveSetup() {
+    const btn = document.getElementById('btn-save');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    // Collect experience entries
+    const experience = [];
+    document.querySelectorAll('#experience-entries .dynamic-entry').forEach(entry => {
+        const title = entry.querySelector('[data-field="title"]').value.trim();
+        const company = entry.querySelector('[data-field="company"]').value.trim();
+        const start = entry.querySelector('[data-field="start"]').value.trim();
+        const end = entry.querySelector('[data-field="end"]').value.trim();
+        const bulletsText = entry.querySelector('[data-field="bullets"]').value.trim();
+        const bullets = bulletsText ? bulletsText.split('\n').map(b => b.trim()).filter(b => b) : [];
+        if (title || company) {
+            experience.push({ title, company, start, end: end || 'present', bullets });
+        }
+    });
+
+    // Collect education entries
+    const education = [];
+    document.querySelectorAll('#education-entries .dynamic-entry').forEach(entry => {
+        const degree = entry.querySelector('[data-field="degree"]').value.trim();
+        const school = entry.querySelector('[data-field="school"]').value.trim();
+        const year = parseInt(entry.querySelector('[data-field="year"]').value) || null;
+        if (degree || school) {
+            education.push({ degree, school, year });
+        }
+    });
+
+    // Collect seniority
+    const seniority = [];
+    if (document.getElementById('f-seniority-entry').checked) seniority.push('entry-level');
+    if (document.getElementById('f-seniority-mid').checked) seniority.push('mid');
+    if (document.getElementById('f-seniority-senior').checked) seniority.push('senior');
+
+    const profile = {
+        name: document.getElementById('f-name').value.trim(),
+        email: document.getElementById('f-email').value.trim(),
+        phone: document.getElementById('f-phone').value.trim(),
+        location: document.getElementById('f-location').value.trim(),
+        linkedin: document.getElementById('f-linkedin').value.trim(),
+        github: document.getElementById('f-github').value.trim(),
+        summary: document.getElementById('f-summary').value.trim(),
+        years_of_experience: parseInt(document.getElementById('f-yoe').value) || 0,
+        current_title: document.getElementById('f-current-title').value.trim(),
+        target_titles: csvToArray(document.getElementById('f-target-titles').value),
+        skills: {
+            languages: csvToArray(document.getElementById('f-languages').value),
+            frameworks: csvToArray(document.getElementById('f-frameworks').value),
+            infrastructure: csvToArray(document.getElementById('f-infrastructure').value),
+            databases: csvToArray(document.getElementById('f-databases').value),
+            other: csvToArray(document.getElementById('f-other-skills').value),
+        },
+        experience: experience,
+        education: education,
+        raw_resume_text: document.getElementById('f-resume-text').value.trim(),
+    };
+
+    const preferences = {
+        target_roles: csvToArray(document.getElementById('f-target-roles').value),
+        target_companies: [],
+        blacklist_companies: csvToArray(document.getElementById('f-blacklist').value),
+        locations: csvToArray(document.getElementById('f-locations').value),
+        remote_only: document.getElementById('f-remote-only').checked,
+        min_salary: parseInt(document.getElementById('f-min-salary').value) || 0,
+        seniority_levels: seniority,
+        visa_sponsorship_required: document.getElementById('f-visa').checked,
+        greenhouse_boards: csvToArray(document.getElementById('f-greenhouse').value),
+        lever_boards: csvToArray(document.getElementById('f-lever').value),
+    };
+
+    try {
+        const resp = await fetch('/api/profile/full', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ profile, preferences })
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            showToast(data.error || 'Save failed', 'error');
+        } else {
+            showToast('Profile and preferences saved!', 'success');
+            document.getElementById('save-status').textContent = 'Saved just now';
+        }
+    } catch (e) {
+        showToast('Save failed: ' + e.message, 'error');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Profile & Preferences';
+}
+</script>
+</body>
+</html>
