@@ -273,23 +273,22 @@
                 <label class="form-label small fw-medium">Current Work Experience (Markdown)</label>
                 <div class="d-flex gap-2 mb-2">
                     <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
-                           onchange="uploadBuilderFile('experience_current', this)" style="max-width:300px;">
+                           onchange="extractFileToTextarea(this, 'rb-experience-current', 'rb-upload-status-current')" style="max-width:300px;">
                     <span class="small text-muted align-self-center" id="rb-upload-status-current"></span>
                 </div>
                 <textarea class="form-control form-control-sm" id="rb-experience-current" rows="8"
                           placeholder="# Current Company — Your Role&#10;&#10;## Project 1&#10;- Built X achieving Y by doing Z&#10;- Reduced latency by 40% through...&#10;&#10;## Project 2&#10;- Architected microservice handling 150K req/min..."></textarea>
             </div>
 
-            <!-- Previous Experience -->
+            <!-- Previous Experiences (multiple) -->
             <div class="mb-3">
-                <label class="form-label small fw-medium">Previous Work Experience (Markdown)</label>
-                <div class="d-flex gap-2 mb-2">
-                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
-                           onchange="uploadBuilderFile('experience_previous', this)" style="max-width:300px;">
-                    <span class="small text-muted align-self-center" id="rb-upload-status-previous"></span>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label small fw-medium mb-0">Previous Work Experiences</label>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPrevExpEntry()">
+                        <i class="bi bi-plus-lg me-1"></i>Add Company
+                    </button>
                 </div>
-                <textarea class="form-control form-control-sm" id="rb-experience-previous" rows="6"
-                          placeholder="# Previous Company — Your Role&#10;&#10;- Achievement 1&#10;- Achievement 2"></textarea>
+                <div id="rb-prev-exp-entries"></div>
             </div>
 
             <!-- Projects -->
@@ -297,7 +296,7 @@
                 <label class="form-label small fw-medium">Projects (Markdown)</label>
                 <div class="d-flex gap-2 mb-2">
                     <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
-                           onchange="uploadBuilderFile('projects', this)" style="max-width:300px;">
+                           onchange="extractFileToTextarea(this, 'rb-projects', 'rb-upload-status-projects')" style="max-width:300px;">
                     <span class="small text-muted align-self-center" id="rb-upload-status-projects"></span>
                 </div>
                 <textarea class="form-control form-control-sm" id="rb-projects" rows="6"
@@ -864,6 +863,8 @@ async function saveSetup(goToDashboard = false) {
 // Resume Builder Files
 // ---------------------------------------------------------------------------
 
+let prevExpCounter = 0;
+
 async function loadResumeBuilderFiles() {
     try {
         const resp = await fetch('/api/resume-builder/files');
@@ -871,9 +872,19 @@ async function loadResumeBuilderFiles() {
         const files = data.files || {};
 
         document.getElementById('rb-experience-current').value = files.experience_current || '';
-        document.getElementById('rb-experience-previous').value = files.experience_previous || '';
         document.getElementById('rb-projects').value = files.projects || '';
         document.getElementById('rb-template').value = files.template || '';
+
+        // Load previous experiences (multiple)
+        const container = document.getElementById('rb-prev-exp-entries');
+        container.innerHTML = '';
+        prevExpCounter = 0;
+        const prevExps = data.previous_experiences || [];
+        if (prevExps.length > 0) {
+            prevExps.forEach(entry => addPrevExpEntry(entry.content));
+        } else {
+            addPrevExpEntry('');
+        }
 
         // Show status
         const status = data.status || {};
@@ -885,47 +896,83 @@ async function loadResumeBuilderFiles() {
             statusEl.innerHTML = `<div class="alert alert-warning py-2 small"><i class="bi bi-exclamation-triangle me-1"></i>Resume builder needs setup:<ul class="mb-0 mt-1">${issues}</ul></div>`;
         }
     } catch(e) {
-        // Silent — not critical
+        // Silent
     }
+}
+
+function addPrevExpEntry(content) {
+    const idx = prevExpCounter++;
+    const container = document.getElementById('rb-prev-exp-entries');
+    const div = document.createElement('div');
+    div.className = 'dynamic-entry mb-2';
+    div.id = `rb-prev-exp-${idx}`;
+    div.innerHTML = `
+        <button type="button" class="btn-remove-entry" onclick="removePrevExpEntry('rb-prev-exp-${idx}')" title="Remove">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <div class="d-flex gap-2 mb-2">
+            <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
+                   onchange="extractFileToTextarea(this, 'rb-prev-exp-text-${idx}', 'rb-prev-exp-status-${idx}')" style="max-width:250px;">
+            <span class="small text-muted align-self-center" id="rb-prev-exp-status-${idx}"></span>
+        </div>
+        <textarea class="form-control form-control-sm" id="rb-prev-exp-text-${idx}" rows="5"
+                  placeholder="# Company Name — Your Role&#10;&#10;- Achievement 1&#10;- Achievement 2">${escapeAttr(content || '')}</textarea>
+    `;
+    container.appendChild(div);
+}
+
+function removePrevExpEntry(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+    // Ensure at least one entry remains
+    const container = document.getElementById('rb-prev-exp-entries');
+    if (container.children.length === 0) addPrevExpEntry('');
 }
 
 async function saveResumeBuilderFiles() {
     const files = {
         experience_current: document.getElementById('rb-experience-current').value,
-        experience_previous: document.getElementById('rb-experience-previous').value,
         projects: document.getElementById('rb-projects').value,
         template: document.getElementById('rb-template').value,
     };
 
+    // Collect all previous experience entries
+    const previousExperiences = [];
+    document.querySelectorAll('#rb-prev-exp-entries .dynamic-entry').forEach(entry => {
+        const textarea = entry.querySelector('textarea');
+        if (textarea && textarea.value.trim()) {
+            previousExperiences.push({content: textarea.value.trim()});
+        }
+    });
+
     // Only save if at least one field has content
-    if (Object.values(files).some(v => v.trim())) {
+    const hasContent = Object.values(files).some(v => v.trim()) || previousExperiences.length > 0;
+    if (hasContent) {
         try {
             await fetch('/api/resume-builder/files', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({files})
+                body: JSON.stringify({files, previous_experiences: previousExperiences})
             });
         } catch(e) {
-            // Silent — profile save is the primary action
+            // Silent
         }
     }
 }
 
-async function uploadBuilderFile(fileType, input) {
+async function extractFileToTextarea(input, textareaId, statusId) {
     const file = input.files[0];
     if (!file) return;
 
-    const statusId = fileType === 'experience_current' ? 'rb-upload-status-current'
-                   : fileType === 'experience_previous' ? 'rb-upload-status-previous'
-                   : 'rb-upload-status-projects';
     const statusEl = document.getElementById(statusId);
     statusEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Extracting...';
+    statusEl.className = 'small text-primary align-self-center';
 
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-        const resp = await fetch(`/api/resume-builder/upload/${fileType}`, {
+        const resp = await fetch('/api/resume-builder/extract', {
             method: 'POST',
             body: formData,
         });
@@ -937,10 +984,6 @@ async function uploadBuilderFile(fileType, input) {
             return;
         }
 
-        // Fill the textarea with extracted text
-        const textareaId = fileType === 'experience_current' ? 'rb-experience-current'
-                         : fileType === 'experience_previous' ? 'rb-experience-previous'
-                         : 'rb-projects';
         document.getElementById(textareaId).value = data.text;
         statusEl.textContent = `Extracted ${data.chars} chars from ${file.name}`;
         statusEl.className = 'small text-success align-self-center';

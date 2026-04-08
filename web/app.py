@@ -282,62 +282,112 @@ _TEMPLATE_DIR = PROJECT_ROOT / "data" / "resume_template"
 @app.route("/api/resume-builder/files")
 def api_resume_builder_files():
     """Return all resume builder input files (experience, projects, template)."""
-    files = {}
+    files = {
+        "experience_current": "",
+        "projects": "",
+        "template": "",
+    }
 
-    for name, path in [
-        ("experience_current", _EXPERIENCE_DIR / "current.md"),
-        ("experience_previous", _EXPERIENCE_DIR / "previous.md"),
-        ("projects", _PROJECTS_DIR / "projects.md"),
-        ("template", _TEMPLATE_DIR / "template.tex"),
-    ]:
-        files[name] = path.read_text() if path.exists() else ""
+    current_path = _EXPERIENCE_DIR / "current.md"
+    if current_path.exists():
+        files["experience_current"] = current_path.read_text()
+
+    projects_path = _PROJECTS_DIR / "projects.md"
+    if projects_path.exists():
+        files["projects"] = projects_path.read_text()
+
+    template_path = _TEMPLATE_DIR / "template.tex"
+    if template_path.exists():
+        files["template"] = template_path.read_text()
+
+    # Load all previous experience files (previous_1.md, previous_2.md, ...)
+    previous_experiences = []
+    if _EXPERIENCE_DIR.exists():
+        for f in sorted(_EXPERIENCE_DIR.glob("previous_*.md")):
+            previous_experiences.append({
+                "filename": f.name,
+                "content": f.read_text(),
+            })
+    # Fallback: old single previous.md
+    if not previous_experiences:
+        old_prev = _EXPERIENCE_DIR / "previous.md"
+        if old_prev.exists():
+            previous_experiences.append({
+                "filename": "previous_1.md",
+                "content": old_prev.read_text(),
+            })
 
     # Check readiness
     from pipeline.resume_builder_bridge import check_builder_ready
     status = check_builder_ready()
 
-    return jsonify({"files": files, "status": status})
+    return jsonify({
+        "files": files,
+        "previous_experiences": previous_experiences,
+        "status": status,
+    })
 
 
 @app.route("/api/resume-builder/files", methods=["POST"])
 def api_save_resume_builder_files():
-    """Save resume builder input files."""
+    """Save resume builder input files, including multiple previous experiences."""
     data = request.get_json()
     files = data.get("files", {})
+    previous_experiences = data.get("previous_experiences", [])
 
     _EXPERIENCE_DIR.mkdir(parents=True, exist_ok=True)
     _PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
     _TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
 
     saved = []
-    for name, path in [
-        ("experience_current", _EXPERIENCE_DIR / "current.md"),
-        ("experience_previous", _EXPERIENCE_DIR / "previous.md"),
-        ("projects", _PROJECTS_DIR / "projects.md"),
-        ("template", _TEMPLATE_DIR / "template.tex"),
-    ]:
-        if name in files:
-            path.write_text(files[name])
-            saved.append(name)
+
+    # Save current experience
+    if "experience_current" in files:
+        (_EXPERIENCE_DIR / "current.md").write_text(files["experience_current"])
+        saved.append("experience_current")
+
+    # Save projects
+    if "projects" in files:
+        (_PROJECTS_DIR / "projects.md").write_text(files["projects"])
+        saved.append("projects")
+
+    # Save template
+    if "template" in files:
+        (_TEMPLATE_DIR / "template.tex").write_text(files["template"])
+        saved.append("template")
+
+    # Save multiple previous experiences as previous_1.md, previous_2.md, ...
+    if previous_experiences:
+        # Remove old previous files first
+        for old in _EXPERIENCE_DIR.glob("previous_*.md"):
+            old.unlink()
+        # Also remove legacy single file
+        legacy = _EXPERIENCE_DIR / "previous.md"
+        if legacy.exists():
+            legacy.unlink()
+
+        for i, entry in enumerate(previous_experiences, 1):
+            content = entry.get("content", "").strip()
+            if content:
+                (_EXPERIENCE_DIR / f"previous_{i}.md").write_text(content)
+                saved.append(f"previous_{i}")
+
+        # Merge all into one previous.md for the resume builder
+        merged = []
+        for f in sorted(_EXPERIENCE_DIR.glob("previous_*.md")):
+            merged.append(f.read_text())
+        if merged:
+            (_EXPERIENCE_DIR / "previous.md").write_text("\n\n---\n\n".join(merged))
 
     return jsonify({"status": "ok", "saved": saved})
 
 
-@app.route("/api/resume-builder/upload/<file_type>", methods=["POST"])
-def api_resume_builder_upload(file_type):
-    """Upload a file (PDF/DOCX/TXT) for experience or projects.
-    Extracts text and saves as markdown."""
+@app.route("/api/resume-builder/extract", methods=["POST"])
+def api_resume_builder_extract():
+    """Upload a file (PDF/DOCX/TXT/MD), extract text and return it.
+    Does NOT save — the frontend fills the textarea, saving happens via the main save."""
     import os as _os
     import tempfile as _tempfile
-
-    valid_types = {
-        "experience_current": _EXPERIENCE_DIR / "current.md",
-        "experience_previous": _EXPERIENCE_DIR / "previous.md",
-        "projects": _PROJECTS_DIR / "projects.md",
-    }
-
-    if file_type not in valid_types:
-        return jsonify({"error": f"Invalid file type. Use: {', '.join(valid_types)}"}), 400
 
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
@@ -357,13 +407,7 @@ def api_resume_builder_upload(file_type):
         text = _extract_resume_text(tmp_path, suffix)
         if not text or len(text.strip()) < 10:
             return jsonify({"error": "Could not extract text from file"}), 400
-
-        # Save as markdown
-        dest = valid_types[file_type]
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(text)
-
-        return jsonify({"text": text, "chars": len(text), "saved_to": str(dest)})
+        return jsonify({"text": text, "chars": len(text)})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
     finally:
