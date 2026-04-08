@@ -370,6 +370,18 @@ def api_scrape_progress():
     return Response(stream(), mimetype="text/event-stream")
 
 
+@app.route("/api/tasks/status")
+def api_tasks_status():
+    """Return the running/idle status of all background tasks.
+    Frontend polls this on page load to re-attach progress bars."""
+    return jsonify({
+        "scrape": _scrape_progress["status"],
+        "generate": _generation_progress["status"],
+        "resume": _resume_progress["status"],
+        "autofill": _autofill_progress["status"],
+    })
+
+
 # ---------------------------------------------------------------------------
 # API — Score
 # ---------------------------------------------------------------------------

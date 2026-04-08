@@ -24,7 +24,185 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     loadJobs('queued');
     loadStats();
+    checkRunningTasks();
 });
+
+// ---------------------------------------------------------------------------
+// Background Task Recovery
+// ---------------------------------------------------------------------------
+
+async function checkRunningTasks() {
+    try {
+        const resp = await fetch('/api/tasks/status');
+        const tasks = await resp.json();
+
+        if (tasks.scrape === 'running') {
+            attachScrapeSSE();
+        }
+        if (tasks.generate === 'running') {
+            attachGenerateSSE();
+        }
+        if (tasks.resume === 'running') {
+            attachResumeSSE();
+        }
+        if (tasks.autofill === 'running') {
+            attachAutofillSSE();
+        }
+    } catch(e) { /* silent */ }
+}
+
+function attachScrapeSSE() {
+    const btn = document.getElementById('btn-scrape');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scraping...';
+
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    progressContainer.style.display = 'block';
+    progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+    document.getElementById('progress-label').textContent = 'Scraping jobs...';
+
+    const evtSource = new EventSource('/api/scrape/progress');
+    evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const pct = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
+        progressBar.style.width = pct + '%';
+        document.getElementById('progress-count').textContent = `Step ${data.current}/${data.total}`;
+        document.getElementById('progress-detail').textContent = data.message;
+
+        if (data.status === 'done') {
+            evtSource.close();
+            document.getElementById('progress-label').textContent = 'Scrape complete';
+            progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+            progressBar.style.width = '100%';
+
+            const stats = data.stats;
+            const msg = stats
+                ? `Scrape complete: ${stats.new} new jobs, ${stats.duplicates} duplicates skipped`
+                : data.message;
+
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Scrape Jobs';
+                showToast(msg, 'success');
+                loadJobs(currentTab);
+                loadStats();
+            }, 1500);
+        }
+    };
+
+    evtSource.onerror = () => {
+        evtSource.close();
+        progressContainer.style.display = 'none';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Scrape Jobs';
+        loadJobs(currentTab);
+        loadStats();
+    };
+}
+
+function attachGenerateSSE() {
+    document.getElementById('progress-container').style.display = 'block';
+    document.getElementById('btn-generate').disabled = true;
+    document.getElementById('progress-label').textContent = 'Generating cover letters...';
+
+    const evtSource = new EventSource('/api/generate/progress');
+    evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const pct = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
+        document.getElementById('progress-bar').style.width = pct + '%';
+        document.getElementById('progress-count').textContent = `${data.current}/${data.total}`;
+        document.getElementById('progress-detail').textContent = data.message;
+
+        if (data.status === 'done') {
+            evtSource.close();
+            setTimeout(() => {
+                document.getElementById('progress-container').style.display = 'none';
+                document.getElementById('btn-generate').disabled = false;
+                loadJobs(currentTab);
+                loadStats();
+                showToast(data.message, 'success');
+            }, 1500);
+        }
+    };
+
+    evtSource.onerror = () => {
+        evtSource.close();
+        document.getElementById('progress-container').style.display = 'none';
+        document.getElementById('btn-generate').disabled = false;
+        loadJobs(currentTab);
+        loadStats();
+    };
+}
+
+function attachResumeSSE() {
+    document.getElementById('progress-container').style.display = 'block';
+    document.getElementById('btn-generate-resumes').disabled = true;
+    document.getElementById('progress-label').textContent = 'Generating tailored resumes...';
+
+    const evtSource = new EventSource('/api/generate-resumes/progress');
+    evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const pct = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
+        document.getElementById('progress-bar').style.width = pct + '%';
+        document.getElementById('progress-count').textContent = `${data.current}/${data.total}`;
+        document.getElementById('progress-detail').textContent = data.message;
+
+        if (data.status === 'done') {
+            evtSource.close();
+            setTimeout(() => {
+                document.getElementById('progress-container').style.display = 'none';
+                document.getElementById('btn-generate-resumes').disabled = false;
+                loadJobs(currentTab);
+                loadStats();
+                showToast(data.message, 'success');
+            }, 1500);
+        }
+    };
+
+    evtSource.onerror = () => {
+        evtSource.close();
+        document.getElementById('progress-container').style.display = 'none';
+        document.getElementById('btn-generate-resumes').disabled = false;
+        loadJobs(currentTab);
+        loadStats();
+    };
+}
+
+function attachAutofillSSE() {
+    document.getElementById('progress-container').style.display = 'block';
+    document.getElementById('btn-autofill').disabled = true;
+    document.getElementById('progress-label').textContent = 'Auto-filling applications...';
+
+    const evtSource = new EventSource('/api/autofill/progress');
+    evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const pct = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
+        document.getElementById('progress-bar').style.width = pct + '%';
+        document.getElementById('progress-count').textContent = `${data.current}/${data.total}`;
+        document.getElementById('progress-detail').textContent = data.message;
+
+        if (data.status === 'done') {
+            evtSource.close();
+            setTimeout(() => {
+                document.getElementById('progress-container').style.display = 'none';
+                document.getElementById('btn-autofill').disabled = false;
+                showAutofillResults(data.results || []);
+                loadJobs(currentTab);
+                loadStats();
+            }, 1000);
+        }
+    };
+
+    evtSource.onerror = () => {
+        evtSource.close();
+        document.getElementById('progress-container').style.display = 'none';
+        document.getElementById('btn-autofill').disabled = false;
+        loadJobs(currentTab);
+        loadStats();
+    };
+}
 
 // ---------------------------------------------------------------------------
 // Data Loading
@@ -867,10 +1045,6 @@ async function skipSelected() {
 
 function startScrape() {
     showConfirm('Run all scrapers? This may take a few minutes.', async () => {
-        const btn = document.getElementById('btn-scrape');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scraping...';
-
         try {
             const resp = await fetch('/api/scrape', {
                 method: 'POST',
@@ -879,63 +1053,12 @@ function startScrape() {
 
             if (resp.status === 409) {
                 showToast('Scrape already in progress', 'warning');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Scrape Jobs';
                 return;
             }
 
-            // Show progress bar with animated stripes (no percentage since steps are variable)
-            const progressContainer = document.getElementById('progress-container');
-            const progressBar = document.getElementById('progress-bar');
-            progressContainer.style.display = 'block';
-            progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
-            document.getElementById('progress-label').textContent = 'Scraping jobs...';
-            document.getElementById('progress-count').textContent = '';
-            document.getElementById('progress-detail').textContent = '';
-
-            const evtSource = new EventSource('/api/scrape/progress');
-            evtSource.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                const pct = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
-                progressBar.style.width = pct + '%';
-                document.getElementById('progress-count').textContent = `Step ${data.current}/${data.total}`;
-                document.getElementById('progress-detail').textContent = data.message;
-
-                if (data.status === 'done') {
-                    evtSource.close();
-                    document.getElementById('progress-label').textContent = 'Scrape complete';
-                    progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
-                    progressBar.style.width = '100%';
-
-                    const stats = data.stats;
-                    const msg = stats
-                        ? `Scrape complete: ${stats.new} new jobs, ${stats.duplicates} duplicates skipped`
-                        : data.message;
-
-                    setTimeout(() => {
-                        progressContainer.style.display = 'none';
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Scrape Jobs';
-                        showToast(msg, 'success');
-                        loadJobs(currentTab);
-                        loadStats();
-                    }, 1500);
-                }
-            };
-
-            evtSource.onerror = () => {
-                evtSource.close();
-                progressContainer.style.display = 'none';
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Scrape Jobs';
-                loadJobs(currentTab);
-                loadStats();
-            };
-
+            attachScrapeSSE();
         } catch (err) {
             showToast('Failed to start scrape: ' + err.message, 'error');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-cloud-download me-1"></i>Scrape Jobs';
         }
     });
 }
