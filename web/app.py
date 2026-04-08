@@ -290,15 +290,15 @@ def api_resume_builder_files():
 
     current_path = _EXPERIENCE_DIR / "current.md"
     if current_path.exists():
-        files["experience_current"] = current_path.read_text()
+        files["experience_current"] = current_path.read_text(encoding="utf-8")
 
     projects_path = _PROJECTS_DIR / "projects.md"
     if projects_path.exists():
-        files["projects"] = projects_path.read_text()
+        files["projects"] = projects_path.read_text(encoding="utf-8")
 
     template_path = _TEMPLATE_DIR / "template.tex"
     if template_path.exists():
-        files["template"] = template_path.read_text()
+        files["template"] = template_path.read_text(encoding="utf-8")
 
     # Load all previous experience files (previous_1.md, previous_2.md, ...)
     previous_experiences = []
@@ -306,7 +306,7 @@ def api_resume_builder_files():
         for f in sorted(_EXPERIENCE_DIR.glob("previous_*.md")):
             previous_experiences.append({
                 "filename": f.name,
-                "content": f.read_text(),
+                "content": f.read_text(encoding="utf-8"),
             })
     # Fallback: old single previous.md
     if not previous_experiences:
@@ -314,7 +314,7 @@ def api_resume_builder_files():
         if old_prev.exists():
             previous_experiences.append({
                 "filename": "previous_1.md",
-                "content": old_prev.read_text(),
+                "content": old_prev.read_text(encoding="utf-8"),
             })
 
     # Check readiness
@@ -342,18 +342,18 @@ def api_save_resume_builder_files():
     saved = []
 
     # Save current experience
-    if "experience_current" in files:
-        (_EXPERIENCE_DIR / "current.md").write_text(files["experience_current"])
+    if "experience_current" in files and files["experience_current"].strip():
+        (_EXPERIENCE_DIR / "current.md").write_text(files["experience_current"], encoding="utf-8")
         saved.append("experience_current")
 
     # Save projects
-    if "projects" in files:
-        (_PROJECTS_DIR / "projects.md").write_text(files["projects"])
+    if "projects" in files and files["projects"].strip():
+        (_PROJECTS_DIR / "projects.md").write_text(files["projects"], encoding="utf-8")
         saved.append("projects")
 
-    # Save template
-    if "template" in files:
-        (_TEMPLATE_DIR / "template.tex").write_text(files["template"])
+    # Save template — only if non-empty (empty means keep the default Jake's template)
+    if "template" in files and files["template"].strip():
+        (_TEMPLATE_DIR / "template.tex").write_text(files["template"], encoding="utf-8")
         saved.append("template")
 
     # Save multiple previous experiences as previous_1.md, previous_2.md, ...
@@ -369,15 +369,15 @@ def api_save_resume_builder_files():
         for i, entry in enumerate(previous_experiences, 1):
             content = entry.get("content", "").strip()
             if content:
-                (_EXPERIENCE_DIR / f"previous_{i}.md").write_text(content)
+                (_EXPERIENCE_DIR / f"previous_{i}.md").write_text(content, encoding="utf-8")
                 saved.append(f"previous_{i}")
 
         # Merge all into one previous.md for the resume builder
         merged = []
         for f in sorted(_EXPERIENCE_DIR.glob("previous_*.md")):
-            merged.append(f.read_text())
+            merged.append(f.read_text(encoding="utf-8"))
         if merged:
-            (_EXPERIENCE_DIR / "previous.md").write_text("\n\n---\n\n".join(merged))
+            (_EXPERIENCE_DIR / "previous.md").write_text("\n\n---\n\n".join(merged), encoding="utf-8")
 
     return jsonify({"status": "ok", "saved": saved})
 
