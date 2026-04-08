@@ -42,7 +42,7 @@ location: {location}
 
 {description}
 """
-    jd_path.write_text(content)
+    jd_path.write_text(content, encoding="utf-8")
     return jd_path
 
 
@@ -87,7 +87,7 @@ def _update_protected_content():
             edu_dates[school_key] = str(year)
     config["protected_content"]["education_dates"] = edu_dates
 
-    CONFIG_PATH.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False))
+    CONFIG_PATH.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False), encoding="utf-8")
 
 
 def _find_output_pdf(company: str, role: str) -> Path | None:
@@ -133,6 +133,11 @@ def check_builder_ready() -> dict:
     # Check Claude CLI
     if not shutil.which("claude"):
         issues.append("Claude CLI not found — install with: npm install -g @anthropic-ai/claude-code")
+
+    # Check pdflatex
+    from resume_builder.utils.latex_compiler import find_pdflatex
+    if not find_pdflatex():
+        issues.append("pdflatex not found — install TeX (macOS: brew install basictex, Windows: miktex.org, Linux: apt install texlive)")
 
     return {
         "ready": len(issues) == 0,
