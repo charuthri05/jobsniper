@@ -180,47 +180,53 @@ def api_scrape():
     _scrape_progress["stats"] = None
 
     def run_scrape():
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         from pipeline.normalizer import normalize_and_insert
         init_db()
         prefs = load_preferences()
-        all_jobs = []
 
-        # Step 1: ATS (Greenhouse + Lever)
+        # Run all 3 scrapers in parallel
         _scrape_progress["current"] = 1
-        _scrape_progress["message"] = "Fetching from Greenhouse & Lever boards..."
-        try:
+        _scrape_progress["total"] = 3
+        _scrape_progress["message"] = "Fetching from all sources in parallel..."
+
+        all_jobs = []
+        sources_done = 0
+
+        def fetch_ats():
             from scrapers.ats_scraper import fetch_all_ats_jobs
-            ats_jobs = fetch_all_ats_jobs(prefs)
-            all_jobs.extend(ats_jobs)
-            _scrape_progress["message"] = f"ATS: {len(ats_jobs)} jobs fetched"
-        except Exception as e:
-            _scrape_progress["message"] = f"ATS error: {e}"
+            return "ATS", fetch_all_ats_jobs(prefs)
 
-        # Step 2: Hiring Cafe
-        _scrape_progress["current"] = 2
-        _scrape_progress["message"] = "Fetching from Hiring Cafe..."
-        try:
+        def fetch_hiringcafe():
             from scrapers.hiringcafe_scraper import fetch_hiringcafe_jobs
-            hc_jobs = fetch_hiringcafe_jobs(prefs)
-            all_jobs.extend(hc_jobs)
-            _scrape_progress["message"] = f"Hiring Cafe: {len(hc_jobs)} jobs fetched"
-        except Exception as e:
-            _scrape_progress["message"] = f"Hiring Cafe error: {e}"
+            return "Hiring Cafe", fetch_hiringcafe_jobs(prefs)
 
-        # Step 3: JobSpy
-        _scrape_progress["current"] = 3
-        _scrape_progress["message"] = "Fetching from job boards (LinkedIn, Indeed, etc.)..."
-        try:
+        def fetch_jobspy():
             from scrapers.jobspy_scraper import scrape_major_boards
-            jobspy_jobs = scrape_major_boards(prefs)
-            all_jobs.extend(jobspy_jobs)
-            _scrape_progress["message"] = f"JobSpy: {len(jobspy_jobs)} jobs fetched"
-        except Exception as e:
-            _scrape_progress["message"] = f"JobSpy error: {e}"
+            return "JobSpy", scrape_major_boards(prefs)
 
-        # Step 4: Normalize and insert
-        _scrape_progress["current"] = 4
-        _scrape_progress["message"] = "Normalizing and deduplicating..."
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [
+                executor.submit(fetch_ats),
+                executor.submit(fetch_hiringcafe),
+                executor.submit(fetch_jobspy),
+            ]
+
+            for future in as_completed(futures):
+                try:
+                    source_name, jobs = future.result()
+                    all_jobs.extend(jobs)
+                    sources_done += 1
+                    _scrape_progress["current"] = sources_done
+                    _scrape_progress["message"] = f"{source_name}: {len(jobs)} jobs fetched ({sources_done}/3 sources done)"
+                except Exception as e:
+                    sources_done += 1
+                    _scrape_progress["current"] = sources_done
+                    _scrape_progress["message"] = f"Source error: {e}"
+
+        # Normalize and insert
+        _scrape_progress["current"] = 3
+        _scrape_progress["message"] = f"Normalizing {len(all_jobs)} jobs..."
         try:
             stats = normalize_and_insert(all_jobs)
             _scrape_progress["stats"] = stats

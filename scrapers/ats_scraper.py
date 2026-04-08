@@ -2,11 +2,11 @@
 Greenhouse and Lever ATS scrapers.
 
 These are public JSON APIs — no authentication needed.
-Rate limit: ~100 req/min for Greenhouse, so we add a small sleep between boards.
+Uses async httpx for maximum parallelism — all boards fetched simultaneously.
 """
 
+import asyncio
 import hashlib
-import time
 from datetime import datetime, timezone
 from html import unescape
 
@@ -38,7 +38,6 @@ def _now_iso() -> str:
 
 def normalize_greenhouse_job(raw: dict, board_token: str) -> dict:
     """Convert a single Greenhouse API job object to our standard schema."""
-    # Build the application URL
     job_id = raw.get("id", "")
     url = f"https://boards.greenhouse.io/{board_token}/jobs/{job_id}"
 
@@ -46,7 +45,6 @@ def normalize_greenhouse_job(raw: dict, board_token: str) -> dict:
     if raw.get("location"):
         location = raw["location"].get("name", "")
 
-    # Description may contain HTML
     description = _strip_html(raw.get("content", ""))
 
     return {
@@ -65,25 +63,30 @@ def normalize_greenhouse_job(raw: dict, board_token: str) -> dict:
     }
 
 
+async def _fetch_greenhouse_async(client: httpx.AsyncClient, board_token: str) -> tuple[str, list[dict]]:
+    """Fetch all jobs from a single Greenhouse board asynchronously."""
+    url = f"https://api.greenhouse.io/v1/boards/{board_token}/jobs?content=true"
+    try:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        jobs = resp.json().get("jobs", [])
+        return board_token, [normalize_greenhouse_job(j, board_token) for j in jobs]
+    except httpx.HTTPStatusError as e:
+        return board_token, []
+    except Exception:
+        return board_token, []
+
+
+# Keep sync version for standalone use
 def fetch_greenhouse_jobs(board_token: str) -> list[dict]:
-    """
-    Fetch all jobs from a Greenhouse board.
-    Returns a list of normalized job dicts.
-    """
+    """Fetch all jobs from a Greenhouse board (sync wrapper)."""
     url = f"https://api.greenhouse.io/v1/boards/{board_token}/jobs?content=true"
     try:
         resp = httpx.get(url, timeout=15)
         resp.raise_for_status()
         jobs = resp.json().get("jobs", [])
         return [normalize_greenhouse_job(j, board_token) for j in jobs]
-    except httpx.HTTPStatusError as e:
-        print(f"  [Greenhouse] HTTP {e.response.status_code} for board '{board_token}'")
-        return []
-    except httpx.RequestError as e:
-        print(f"  [Greenhouse] Request error for board '{board_token}': {e}")
-        return []
-    except Exception as e:
-        print(f"  [Greenhouse] Unexpected error for board '{board_token}': {e}")
+    except Exception:
         return []
 
 
@@ -119,10 +122,8 @@ def normalize_lever_job(raw: dict, company_slug: str) -> dict:
     if additional:
         description_text += "\n\n" + additional
 
-    # Salary parsing from Lever's salary range field (if present)
     salary_min = None
     salary_max = None
-    compensation = categories.get("commitment", "")
 
     return {
         "id": _make_id(url),
@@ -140,11 +141,22 @@ def normalize_lever_job(raw: dict, company_slug: str) -> dict:
     }
 
 
+async def _fetch_lever_async(client: httpx.AsyncClient, company_slug: str) -> tuple[str, list[dict]]:
+    """Fetch all jobs from a single Lever board asynchronously."""
+    url = f"https://api.lever.co/v0/postings/{company_slug}?mode=json"
+    try:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        postings = resp.json()
+        if not isinstance(postings, list):
+            return company_slug, []
+        return company_slug, [normalize_lever_job(j, company_slug) for j in postings]
+    except Exception:
+        return company_slug, []
+
+
 def fetch_lever_jobs(company_slug: str) -> list[dict]:
-    """
-    Fetch all jobs from a Lever company page.
-    Returns a list of normalized job dicts.
-    """
+    """Fetch all jobs from a Lever company page (sync wrapper)."""
     url = f"https://api.lever.co/v0/postings/{company_slug}?mode=json"
     try:
         resp = httpx.get(url, timeout=15)
@@ -153,70 +165,61 @@ def fetch_lever_jobs(company_slug: str) -> list[dict]:
         if not isinstance(postings, list):
             return []
         return [normalize_lever_job(j, company_slug) for j in postings]
-    except httpx.HTTPStatusError as e:
-        print(f"  [Lever] HTTP {e.response.status_code} for company '{company_slug}'")
-        return []
-    except httpx.RequestError as e:
-        print(f"  [Lever] Request error for company '{company_slug}': {e}")
-        return []
-    except Exception as e:
-        print(f"  [Lever] Unexpected error for company '{company_slug}': {e}")
+    except Exception:
         return []
 
 
 # ---------------------------------------------------------------------------
-# Batch fetch
+# Async batch fetch — all boards fire at once
 # ---------------------------------------------------------------------------
 
-def _fetch_greenhouse_worker(board: str) -> tuple[str, list[dict]]:
-    """Worker function for parallel Greenhouse fetching."""
-    jobs = fetch_greenhouse_jobs(board)
-    return board, jobs
-
-
-def _fetch_lever_worker(slug: str) -> tuple[str, list[dict]]:
-    """Worker function for parallel Lever fetching."""
-    jobs = fetch_lever_jobs(slug)
-    return slug, jobs
-
-
-def fetch_all_ats_jobs(preferences: dict, max_workers: int = 10) -> list[dict]:
-    """
-    Fetch jobs from all configured Greenhouse and Lever boards in parallel.
-    Uses 10 concurrent workers by default — fast but stays under rate limits.
-    """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    all_jobs = []
+async def _fetch_all_async(preferences: dict) -> list[dict]:
+    """Fire all Greenhouse + Lever requests simultaneously."""
     greenhouse_boards = preferences.get("greenhouse_boards", [])
     lever_boards = preferences.get("lever_boards", [])
+    total_boards = len(greenhouse_boards) + len(lever_boards)
 
-    # Parallel Greenhouse fetching
-    print(f"  Fetching from {len(greenhouse_boards)} Greenhouse boards ({max_workers} parallel)...")
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(_fetch_greenhouse_worker, board): board
-            for board in greenhouse_boards
-        }
-        for future in as_completed(futures):
-            board, jobs = future.result()
+    print(f"  Fetching from {total_boards} boards simultaneously...")
+
+    all_jobs = []
+
+    async with httpx.AsyncClient(timeout=20, limits=httpx.Limits(max_connections=50)) as client:
+        # Fire ALL requests at once
+        tasks = []
+        for board in greenhouse_boards:
+            tasks.append(_fetch_greenhouse_async(client, board))
+        for slug in lever_boards:
+            tasks.append(_fetch_lever_async(client, slug))
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for result in results:
+            if isinstance(result, Exception):
+                continue
+            name, jobs = result
             all_jobs.extend(jobs)
             if jobs:
-                print(f"    {board}: {len(jobs)} jobs")
-
-    # Parallel Lever fetching
-    if lever_boards:
-        print(f"  Fetching from {len(lever_boards)} Lever boards...")
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {
-                executor.submit(_fetch_lever_worker, slug): slug
-                for slug in lever_boards
-            }
-            for future in as_completed(futures):
-                slug, jobs = future.result()
-                all_jobs.extend(jobs)
-                if jobs:
-                    print(f"    {slug}: {len(jobs)} jobs")
+                print(f"    {name}: {len(jobs)} jobs")
 
     print(f"  Total ATS jobs fetched: {len(all_jobs)}")
     return all_jobs
+
+
+def fetch_all_ats_jobs(preferences: dict, **kwargs) -> list[dict]:
+    """
+    Fetch jobs from all configured Greenhouse and Lever boards.
+    Uses async I/O — all 70 boards fetched simultaneously.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        # Already in an async context (e.g. Flask with async), use thread
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            future = pool.submit(asyncio.run, _fetch_all_async(preferences))
+            return future.result()
+    else:
+        return asyncio.run(_fetch_all_async(preferences))
