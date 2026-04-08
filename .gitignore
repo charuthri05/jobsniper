@@ -7,6 +7,12 @@ data/jobs.db
 data/jobs.db-shm
 data/jobs.db-wal
 data/jobs_export.csv
+data/preferences.json
+data/experience/
+data/projects/
+data/resume_output/
+data/resumes/
+data/job_description_temp.md
 
 # Python
 __pycache__/

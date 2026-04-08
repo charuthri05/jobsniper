@@ -1,0 +1,241 @@
+"""
+Bridge between our job pipeline and the 3-stage resume builder.
+
+This is a thin adapter — it takes a job from our DB, writes a JD file,
+loads the config pointing to our data/ files, and calls the resume builder's
+orchestrator. The resume builder's core code (stages, services, prompts)
+is completely untouched.
+"""
+
+import json
+import logging
+import shutil
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_PATH = PROJECT_ROOT / "data" / "resume_builder_config.yaml"
+RESUMES_DIR = PROJECT_ROOT / "data" / "resumes"
+
+
+def _write_jd_file(job: dict) -> Path:
+    """Write a job description as a markdown file with YAML frontmatter
+    in the format the resume builder expects."""
+    jd_path = PROJECT_ROOT / "data" / "job_description_temp.md"
+
+    company = job.get("company", "Unknown")
+    title = job.get("title", "Unknown")
+    location = job.get("location", "")
+    description = job.get("description", "")
+
+    content = f"""---
+company: {company}
+role: {title}
+location: {location}
+---
+
+# {title}
+
+## Company: {company}
+## Location: {location}
+
+{description}
+"""
+    jd_path.write_text(content)
+    return jd_path
+
+
+def _update_protected_content():
+    """Update the config's protected_content from candidate_profile.json
+    so the builder knows what NOT to modify in the LaTeX."""
+    import yaml
+
+    try:
+        from utils.profile import load_profile
+        profile = load_profile()
+    except Exception:
+        return
+
+    if not CONFIG_PATH.exists():
+        return
+
+    config = yaml.safe_load(CONFIG_PATH.read_text())
+
+    config["protected_content"]["name"] = profile.get("name", "")
+    config["protected_content"]["email"] = profile.get("email", "")
+    config["protected_content"]["phone"] = profile.get("phone", "")
+    config["protected_content"]["linkedin"] = profile.get("linkedin", "")
+    config["protected_content"]["github"] = profile.get("github", "")
+
+    # Build employment dates from experience entries
+    emp_dates = {}
+    for exp in profile.get("experience", []):
+        company_key = exp.get("company", "").lower().replace(" ", "_")
+        start = exp.get("start", "")
+        end = exp.get("end", "present")
+        if company_key and start:
+            emp_dates[company_key] = f"{start} -- {end}"
+    config["protected_content"]["employment_dates"] = emp_dates
+
+    # Build education dates
+    edu_dates = {}
+    for edu in profile.get("education", []):
+        school_key = edu.get("school", "").lower().replace(" ", "_")[:20]
+        year = edu.get("year", "")
+        if school_key and year:
+            edu_dates[school_key] = str(year)
+    config["protected_content"]["education_dates"] = edu_dates
+
+    CONFIG_PATH.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False))
+
+
+def _find_output_pdf(company: str, role: str) -> Path | None:
+    """Find the generated PDF in the builder's output directory."""
+    output_base = PROJECT_ROOT / "data" / "resume_output"
+    if not output_base.exists():
+        return None
+
+    # Try all subdirs, match on company name prefix
+    company_lower = company.lower().replace(" ", "_").replace("/", "-").replace(",", "")
+
+    for folder in sorted(output_base.iterdir(), reverse=True):
+        if not folder.is_dir():
+            continue
+        if company_lower[:10] in folder.name.lower():
+            pdfs = list(folder.glob("*.pdf"))
+            if pdfs:
+                return pdfs[0]
+
+    # Fallback — most recently modified PDF
+    all_pdfs = list(output_base.rglob("*.pdf"))
+    if all_pdfs:
+        return max(all_pdfs, key=lambda p: p.stat().st_mtime)
+
+    return None
+
+
+def check_builder_ready() -> dict:
+    """Check if the resume builder has all required input files."""
+    issues = []
+
+    if not CONFIG_PATH.exists():
+        issues.append("Config not found: data/resume_builder_config.yaml")
+
+    exp_current = PROJECT_ROOT / "data" / "experience" / "current.md"
+    if not exp_current.exists():
+        issues.append("Missing: data/experience/current.md (current work experience)")
+
+    template = PROJECT_ROOT / "data" / "resume_template" / "template.tex"
+    if not template.exists():
+        issues.append("Missing: data/resume_template/template.tex (LaTeX template)")
+
+    # Check Claude CLI
+    if not shutil.which("claude"):
+        issues.append("Claude CLI not found — install with: npm install -g @anthropic-ai/claude-code")
+
+    return {
+        "ready": len(issues) == 0,
+        "issues": issues,
+    }
+
+
+def generate_resume(job: dict, progress_callback=None) -> dict:
+    """
+    Generate a tailored resume for a job using the 3-stage pipeline.
+
+    Calls the friend's resume builder orchestrator directly — no subprocess,
+    just Python function calls. The core code is untouched.
+
+    Args:
+        job: Job dict from our database
+        progress_callback: Optional function(message) for progress updates
+
+    Returns:
+        dict with: success, pdf_path, error, plan, feedback
+    """
+    from rich.console import Console
+
+    def update(msg):
+        logger.info(msg)
+        if progress_callback:
+            progress_callback(msg)
+
+    result = {
+        "success": False,
+        "pdf_path": None,
+        "error": None,
+        "plan": None,
+        "feedback": None,
+    }
+
+    # Pre-flight checks
+    status = check_builder_ready()
+    if not status["ready"]:
+        result["error"] = "Resume builder not ready: " + "; ".join(status["issues"])
+        return result
+
+    # Write JD file
+    jd_path = _write_jd_file(job)
+    update(f"JD written: {job.get('title')} at {job.get('company')}")
+
+    # Update protected content from profile
+    try:
+        _update_protected_content()
+    except Exception as e:
+        logger.warning(f"Could not update protected content: {e}")
+
+    # Load config and run the orchestrator — this is the friend's code, untouched
+    try:
+        from resume_builder.config import load_config
+        from resume_builder.orchestrator import Orchestrator
+
+        cfg = load_config(config_path=CONFIG_PATH)
+        console = Console(quiet=True)  # suppress rich output, we use progress_callback
+        orchestrator = Orchestrator(config=cfg, console=console)
+
+        update("Stage 1/3: Planning resume rewrites...")
+        pipeline_result = orchestrator.run(
+            jd_path=jd_path,
+            output_dir=None,  # let it use config default
+            stage=None,       # run all 3 stages
+            dry_run=False,
+            verbose=False,
+        )
+
+        if not pipeline_result.success:
+            errors = pipeline_result.errors if pipeline_result.errors else ["Unknown pipeline error"]
+            result["error"] = "; ".join(errors)
+            return result
+
+        # Read intermediate artifacts for display
+        if pipeline_result.plan_file and pipeline_result.plan_file.exists():
+            result["plan"] = pipeline_result.plan_file.read_text()
+        if pipeline_result.feedback_file and pipeline_result.feedback_file.exists():
+            result["feedback"] = pipeline_result.feedback_file.read_text()
+
+        # Find and copy the PDF
+        pdf_source = pipeline_result.pdf_file
+        if not pdf_source or not pdf_source.exists():
+            pdf_source = _find_output_pdf(
+                job.get("company", ""), job.get("title", "")
+            )
+
+        if not pdf_source or not pdf_source.exists():
+            result["error"] = "Pipeline completed but no PDF generated. Is pdflatex installed?"
+            return result
+
+        # Copy to our resumes directory
+        RESUMES_DIR.mkdir(parents=True, exist_ok=True)
+        dest = RESUMES_DIR / f"{job['id']}.pdf"
+        shutil.copy2(str(pdf_source), str(dest))
+
+        update(f"Resume saved: {dest.name}")
+        result["success"] = True
+        result["pdf_path"] = str(dest)
+        return result
+
+    except Exception as e:
+        result["error"] = f"Pipeline error: {e}"
+        logger.exception("Resume builder pipeline failed")
+        return result

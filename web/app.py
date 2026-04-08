@@ -271,6 +271,113 @@ def api_save_profile_full():
 
 
 # ---------------------------------------------------------------------------
+# API — Resume Builder Files
+# ---------------------------------------------------------------------------
+
+_EXPERIENCE_DIR = PROJECT_ROOT / "data" / "experience"
+_PROJECTS_DIR = PROJECT_ROOT / "data" / "projects"
+_TEMPLATE_DIR = PROJECT_ROOT / "data" / "resume_template"
+
+
+@app.route("/api/resume-builder/files")
+def api_resume_builder_files():
+    """Return all resume builder input files (experience, projects, template)."""
+    files = {}
+
+    for name, path in [
+        ("experience_current", _EXPERIENCE_DIR / "current.md"),
+        ("experience_previous", _EXPERIENCE_DIR / "previous.md"),
+        ("projects", _PROJECTS_DIR / "projects.md"),
+        ("template", _TEMPLATE_DIR / "template.tex"),
+    ]:
+        files[name] = path.read_text() if path.exists() else ""
+
+    # Check readiness
+    from pipeline.resume_builder_bridge import check_builder_ready
+    status = check_builder_ready()
+
+    return jsonify({"files": files, "status": status})
+
+
+@app.route("/api/resume-builder/files", methods=["POST"])
+def api_save_resume_builder_files():
+    """Save resume builder input files."""
+    data = request.get_json()
+    files = data.get("files", {})
+
+    _EXPERIENCE_DIR.mkdir(parents=True, exist_ok=True)
+    _PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+    _TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
+
+    saved = []
+    for name, path in [
+        ("experience_current", _EXPERIENCE_DIR / "current.md"),
+        ("experience_previous", _EXPERIENCE_DIR / "previous.md"),
+        ("projects", _PROJECTS_DIR / "projects.md"),
+        ("template", _TEMPLATE_DIR / "template.tex"),
+    ]:
+        if name in files:
+            path.write_text(files[name])
+            saved.append(name)
+
+    return jsonify({"status": "ok", "saved": saved})
+
+
+@app.route("/api/resume-builder/upload/<file_type>", methods=["POST"])
+def api_resume_builder_upload(file_type):
+    """Upload a file (PDF/DOCX/TXT) for experience or projects.
+    Extracts text and saves as markdown."""
+    import os as _os
+    import tempfile as _tempfile
+
+    valid_types = {
+        "experience_current": _EXPERIENCE_DIR / "current.md",
+        "experience_previous": _EXPERIENCE_DIR / "previous.md",
+        "projects": _PROJECTS_DIR / "projects.md",
+    }
+
+    if file_type not in valid_types:
+        return jsonify({"error": f"Invalid file type. Use: {', '.join(valid_types)}"}), 400
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    filename = (file.filename or "").lower()
+
+    if not any(filename.endswith(ext) for ext in (".pdf", ".docx", ".doc", ".txt", ".md")):
+        return jsonify({"error": "Supported formats: PDF, DOCX, TXT, MD"}), 400
+
+    suffix = "." + filename.rsplit(".", 1)[-1]
+    with _tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        file.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        text = _extract_resume_text(tmp_path, suffix)
+        if not text or len(text.strip()) < 10:
+            return jsonify({"error": "Could not extract text from file"}), 400
+
+        # Save as markdown
+        dest = valid_types[file_type]
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(text)
+
+        return jsonify({"text": text, "chars": len(text), "saved_to": str(dest)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        _os.unlink(tmp_path)
+
+
+@app.route("/api/resume-builder/status")
+def api_resume_builder_status():
+    """Check if the 3-stage resume builder is ready to use."""
+    from pipeline.resume_builder_bridge import check_builder_ready
+    return jsonify(check_builder_ready())
+
+
+# ---------------------------------------------------------------------------
 # API — Scrape
 # ---------------------------------------------------------------------------
 
@@ -611,7 +718,8 @@ _resume_progress = {"current": 0, "total": 0, "status": "idle", "message": ""}
 
 @app.route("/api/generate-resumes", methods=["POST"])
 def api_generate_resumes():
-    """Generate tailored resume PDFs for selected job IDs. Runs in background thread."""
+    """Generate tailored resume PDFs using the 3-stage Claude CLI pipeline.
+    Falls back to the built-in generator if the builder inputs aren't set up."""
     data = request.get_json()
     job_ids = data.get("job_ids", [])
 
@@ -627,8 +735,19 @@ def api_generate_resumes():
     _resume_progress["message"] = "Starting..."
 
     def run_resume_generation():
-        from pipeline.resume_generator import generate_tailored_resume
-        profile = load_profile()
+        from pipeline.resume_builder_bridge import generate_resume, check_builder_ready
+
+        builder_status = check_builder_ready()
+        use_3stage = builder_status["ready"]
+
+        if use_3stage:
+            _resume_progress["message"] = "Using 3-stage Claude CLI resume builder"
+        else:
+            _resume_progress["message"] = (
+                "3-stage builder not ready — using built-in generator. "
+                "Set up experience files in Settings to enable it."
+            )
+
         generated = 0
         errors = 0
 
@@ -638,28 +757,34 @@ def api_generate_resumes():
                 _resume_progress["current"] = i + 1
                 continue
 
-            _resume_progress["message"] = f"Resume: {job['title']} at {job['company']}"
+            _resume_progress["message"] = f"Resume {i+1}/{len(job_ids)}: {job['title']} at {job['company']}"
 
             try:
-                resume_path = generate_tailored_resume(job, profile)
+                if use_3stage:
+                    def progress_cb(msg):
+                        _resume_progress["message"] = f"[{i+1}/{len(job_ids)}] {msg}"
 
-                # Store path in notes
-                existing_notes = {}
-                try:
-                    existing_notes = json.loads(job.get("notes") or "{}")
-                except (json.JSONDecodeError, TypeError):
-                    pass
-                existing_notes["resume_path"] = resume_path
-                update_job(job_id, notes=json.dumps(existing_notes))
-                generated += 1
+                    result = generate_resume(job, progress_callback=progress_cb)
+                    if result["success"]:
+                        generated += 1
+                    else:
+                        errors += 1
+                        _resume_progress["message"] = f"Error: {result['error']}"
+                else:
+                    from pipeline.resume_generator import generate_tailored_resume
+                    profile = load_profile()
+                    generate_tailored_resume(job, profile)
+                    generated += 1
+
             except Exception as e:
                 errors += 1
                 _resume_progress["message"] = f"Error: {e}"
 
             _resume_progress["current"] = i + 1
 
+        method = "3-stage Claude CLI" if use_3stage else "built-in"
         _resume_progress["status"] = "done"
-        _resume_progress["message"] = f"Done: {generated} resumes, {errors} errors"
+        _resume_progress["message"] = f"Done ({method}): {generated} resumes, {errors} errors"
 
     thread = threading.Thread(target=run_resume_generation, daemon=True)
     thread.start()

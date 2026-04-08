@@ -1,0 +1,123 @@
+# Resume Builder Configuration
+# 3-stage LLM pipeline: Planner → Reviewer → Executor
+# Core logic from github.com/Siddartha-Kodaboina/resume-builder
+
+app_name: "Resume Builder"
+version: "0.1.0"
+
+# =============================================================================
+# LLM Provider — Claude CLI ($0 via subscription)
+# =============================================================================
+
+active_provider: "claude_cli"
+
+claude_cli:
+  enabled: true
+  mode: "print"
+  timeout_seconds: 300
+  retry_on_failure: true
+  max_retries: 2
+  add_dir_flag: "--add-dir"
+
+anthropic_api:
+  enabled: false
+  api_key: null
+  default_model: "claude-sonnet-4-20250514"
+  max_tokens: 8000
+  temperature: 0.0
+
+openai:
+  enabled: false
+  api_key: null
+  default_model: "gpt-4o"
+  max_tokens: 8000
+  temperature: 0.0
+
+perplexity:
+  enabled: false
+  api_key: null
+  default_model: "llama-3.1-sonar-large-128k-online"
+  max_tokens: 8000
+
+# =============================================================================
+# Input File Paths (relative to project root)
+# =============================================================================
+
+inputs:
+  job_description: "data/job_description_temp.md"
+  resume_template: "data/resume_template/template.tex"
+  experience:
+    current: "data/experience/current.md"
+    previous: "data/experience/previous.md"
+  projects: "data/projects/projects.md"
+
+# =============================================================================
+# Output Configuration
+# =============================================================================
+
+output:
+  base_dir: "data/resume_output"
+  folder_format: "{company}_{role}"
+  pdf_name: "Resume.pdf"
+  artifacts:
+    plan: "resume_plan.md"
+    feedback: "review_feedback.md"
+    latex: "resume.tex"
+
+# =============================================================================
+# LaTeX Compilation
+# =============================================================================
+
+latex:
+  compiler: "pdflatex"
+  compile_twice: true
+  clean_aux_files: true
+  aux_extensions:
+    - ".aux"
+    - ".log"
+    - ".out"
+    - ".toc"
+    - ".fls"
+    - ".fdb_latexmk"
+
+# =============================================================================
+# Stage Configuration
+# =============================================================================
+
+stages:
+  planner:
+    name: "Stage 1: Planner"
+    description: "Analyzes JD and creates rewrite plan"
+    output_file: "resume_plan.md"
+
+  reviewer:
+    name: "Stage 2: Reviewer"
+    description: "Validates plan and provides feedback"
+    output_file: "review_feedback.md"
+
+  executor:
+    name: "Stage 3: Executor"
+    description: "Generates final LaTeX from plan + feedback"
+    output_file: "resume.tex"
+
+# =============================================================================
+# Protected Content (loaded dynamically from candidate_profile.json at runtime)
+# =============================================================================
+
+protected_content:
+  name: ""
+  email: ""
+  phone: ""
+  linkedin: ""
+  github: ""
+  education_dates: {}
+  employment_dates: {}
+
+# =============================================================================
+# Logging
+# =============================================================================
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: null

@@ -1,0 +1,247 @@
+
+\documentclass[letterpaper,10pt]{article} 
+
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{fontawesome5}
+
+
+\input{glyphtounicode}
+
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-6pt}]
+
+% Ensure that generated pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-5pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-10pt}
+}
+\newcommand{\bluehyperlink}[2]{\href{#1}{\textcolor[RGB]{16, 103, 145}{#2 \tiny\faExternalLink*}}}
+\newcommand{\resumeSubheadingEducation}[5]{
+  \vspace{-1pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #4 \\
+      {\small#3} & {\small#5} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-3pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=*, itemsep=2pt]}
+
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+
+
+
+
+\begin{center}
+
+ \textbf{\Large \scshape Siddartha Kodaboina} \\ \vspace{3pt}
+ 
+\faYoutube $ $ \href{https://www.linkedin.com/in/siddartha-kodaboina/}{{YouTube}} 
+$|$ \faLinkedin $ $ \href{https://www.linkedin.com/in/siddartha-kodaboina/}{{Linkedin}}  $|$  \faGithub $  $ \href{https://github.com/Siddartha-Kodaboina?tab=repositories}{{GitHub}} $|$    
+    \faGlobe $ $ \href{https://sid-port-3000-01d6cfd7dace.herokuapp.com/}{{Portfolio}}  $|$ 
+ \small \reflectbox{\faPhone} $ $ (669) 649-2373 $|$  \faEnvelope $ $ \href{mailto:stevesiddu49@gmail.com}{{stevesiddu49@gmail.com}} 
+
+\end{center}
+
+%-----------EDUCATION-----------
+\section{\textbf{Education}}
+\vspace{0.2em}
+
+  \resumeSubHeadingListStart
+    \resumeSubheadingEducation
+      {Master of Science, Software Engineering}
+      {\textbf{Coursework}: Cloud Computing, Distributed Systems, Software Platforms, Machine Learning, Deep Learning. }
+      % {m}
+      {San Jose State University: Cloud Computing, Distributed Systems, Software Platforms, Machine Learning. }
+      {\hspace{-2.5em}Aug 2023 - May 2025} 
+
+    \resumeSubheadingEducation
+      {Bachelor of Technology, Computer Science}
+      % {Algorithms, Data structures, Database Management Systems, Operating Systems, OOPS, ML.}
+      {\textbf{Coursework}: Data structures, Database Management Systems, Operating Systems}
+      {JNTU University: Algorithms, Data structures, Database Management, Operating Systems, Computer Networks.}{\hspace{-4em}Jun 2017 -- May 2021}
+
+
+  \resumeSubHeadingListEnd
+
+%-----------PROGRAMMING SKILLS-----------
+\section{\textbf{Technical Skills}}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+
+    \small{\item{
+ \textbf{Languages:} {TypeScript, JavaScript, Go, Python, SQL} \\
+ \textbf{Backend:} {Node.js, NestJS, Express, Prisma ORM, gRPC, REST APIs, NATS JetStream, GraphQL} \\
+ \textbf{Cloud \& Infra:} {AWS (ECS, CDK, RDS, S3, Lambda, ECR, CloudWatch), Terraform, Docker, GitHub Actions} \\
+ \textbf{Observability:} {New Relic, OpenTelemetry, Prometheus, Grafana, Loki, PagerDuty, Sentry} \\
+ \textbf{Databases:} {PostgreSQL, Redis, MongoDB, DynamoDB} \\
+
+ \end{itemize}
+%-------------------------------------------
+%-----------EXPERIENCE-----------
+\section{\textbf{Experience}}
+         \vspace{5pt}
+  \resumeSubHeadingListStart
+
+    
+\resumeSubheading
+{\textbf{Linq} $|$ \normalfont{Software Engineer II} }{\small\textbf{Aug 2025 -- Present}}{}{}
+\vspace{-16pt}
+{\underline{Backend Engineer: Platform Infrastructure}}
+\vspace{16pt}
+\resumeItemListStart
+
+% Fleet Management Service (PNS) - NestJS focus for JD match
+\resumeItem{Architected and solo-built fleet management service using \textbf{NestJS, TypeScript, and Prisma}, designing hierarchical data model (data centers → racks → devices → users) serving as source of truth for \textbf{10+ internal services}}
+\resumeItem{Deployed service on \textbf{AWS using CDK} with separated service/data stacks, ensuring \textbf{zero data loss} during deployments; engineered REST and gRPC APIs with \textbf{<100ms p95 latency} for cross-entity infrastructure queries}
+
+% Distributed Messaging Platform (Synapse) - Scale + Distributed Systems
+\resumeItem{Built backend services processing \textbf{1M+ messages/day} across \textbf{1000+ distributed servers} with \textbf{99.99\% uptime}, implementing async message handling via \textbf{NATS JetStream} with per-entity consumer partitioning}
+\resumeItem{Integrated \textbf{New Relic APM} and \textbf{OpenTelemetry} across services—configured OTLP exporters, W3C distributed tracing, and custom service health metrics; built \textbf{Prometheus → Grafana} dashboards with \textbf{PagerDuty} alerting}
+
+% CI/CD + DevOps - Direct JD match
+\resumeItem{Implemented \textbf{trunk-based CI/CD} using \textbf{GitHub Actions}—automated linting, testing, Docker builds, ECR push, and \textbf{Terraform-driven ECS Fargate} deployments with canary rollouts and one-click rollback workflows}
+\resumeItem{Diagnosed and resolved critical production issues: identified duplicate goroutine handlers causing WebSocket connection flapping, implemented event-driven coordination fixing race conditions—\textbf{zero recurrence} post-fix}
+
+% AI Developer Tool (Remedy) - AI tools JD match
+\resumeItem{Built AI-powered CLI tool enabling \textbf{one-command bug resolution} (ticket-id → PR)—engineered multi-agent pipeline with model tiering (Haiku/Sonnet/Opus), achieving \textbf{99\% cost reduction} via Claude CLI OAuth routing}
+
+\resumeItemListEnd
+\vspace{3pt}
+
+\resumeSubheading
+{\textbf{AppLogic Networks} $|$ \normalfont{Software Engineer II} }{\small\textbf{Jul 2021 -- Jul 2023}}{}{}
+\vspace{-16pt}
+{\underline{Backend Engineer: Data Plane}}
+\vspace{16pt}
+\resumeItemListStart
+\resumeItem{Architected full-stack documentation platform using React, Node.js, AWS S3, OpenSearch, and PostgreSQL RDS serving 10K+ PDFs with RBAC, presigned URLs, full-text search, and ML-powered TLDR summarization using transformer models}
+\resumeItem{Implemented AWS Cognito/IAM authentication with role-based access control (RBAC), JWT token management, and attribute-based permissions enabling multi-tenant document access for 500+ users across 10+ teams}
+\resumeItem{Built OpenSearch indexing pipeline with Lambda, Textract, and Apache Tika for full-text PDF search with faceted filtering, deployed via GitLab CI/CD to AWS ECS Fargate with Docker, ECR, ALB, and automated health-check rollbacks
+}
+\resumeItemListEnd
+\vspace{3pt}
+{\underline{Backend Engineer: DevOps}}
+\resumeItemListStart
+\resumeItem{Managed centralized CI/CD infrastructure with Jenkins distributed architecture handling 1000+ builds/day across 30+ CentOS/Ubuntu machines (256 concurrent workers), JFrog Artifactory (100TB storage), achieving 97\% build success rate}
+\resumeItem{Deployed Prometheus, Node Exporter, and Grafana monitoring stack across 30+ physical Linux servers with custom Jenkins metrics exporters, creating real-time dashboards and alerting reducing MTTR by 60\%}
+\resumeItemListEnd
+
+ %-----------PROJECTS-----------
+\section{\textbf{Projects}}
+\small
+\vspace{3pt}
+        {\textbf{SJSU Campus Connect  }\bluehyperlink{https://github.com/Siddartha-Kodaboina/SJSU-AI-Advisor}{{(Github)}} $|$ \textnormal{\textit{Python, ChatGPT, Huggingface, Vector DBs, FineTuning, LLM, Gen AI}}} {}
+          \resumeItemListStart
+            \resumeItem{Built an agentic pipeline in \textbf{Python} using \textbf{GPT APIs} and \textbf{LlamaParse} to generate nearly 3,000 high-quality Q\&A pairs}
+        \resumeItem{ Wrote \textbf{Python} scripts finetuning \textbf{LLaMA 3.2} and \textbf{Mistral-7B} models using \textbf{QLoRA} \textbf{PEFT} techniques on custom data }
+        \resumeItem{ Deployed optimized models on \textbf{HuggingFace} with production-ready \textbf{Streamlit} interface for real-time responses}
+          \resumeItemListEnd
+    \vspace{6pt}
+        {\textbf{Cli Tool: Distributed Jenkins Infrastructure  }\bluehyperlink{https://github.com/Siddartha-Kodaboina/jenkins-local-init}{{(Github)}} $|$ \textnormal{\textit{Python, Jenkins, Docker, Webhooks, Make}}} {}
+          \resumeItemListStart
+            \resumeItem{Developed a cross-platform CLI tool to automate the setup of a distributed Jenkins CI/CD infrastructure with Dockerized master-agent architecture, reducing setup time by 95\% through single-command deployment, secure GitHub integration, dynamic resource allocation, and persistent storage support.}
+          \resumeItemListEnd
+    \vspace{6pt} 
+     
+          
+    \vspace{6pt}
+          
+        
+\resumeItemListEnd
+ 
+
+\vspace{3pt}
+
+
+
+
+  
+%-------------------------------------------
+
+\end{document}

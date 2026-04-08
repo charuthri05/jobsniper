@@ -257,6 +257,67 @@
             <textarea class="form-control" id="f-resume-text" rows="6"></textarea>
         </div>
 
+        <!-- Resume Builder Files -->
+        <div class="setup-section">
+            <h6><i class="bi bi-file-earmark-richtext me-2"></i>Resume Builder (3-Stage Claude CLI)</h6>
+            <p class="text-muted small mb-3">
+                These files power the advanced resume builder. Upload or paste your detailed work experience,
+                projects, and LaTeX template. The builder uses Claude CLI to create ATS-optimized resumes
+                tailored to each job description.
+            </p>
+
+            <div id="rb-status" class="mb-3"></div>
+
+            <!-- Current Experience -->
+            <div class="mb-3">
+                <label class="form-label small fw-medium">Current Work Experience (Markdown)</label>
+                <div class="d-flex gap-2 mb-2">
+                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
+                           onchange="uploadBuilderFile('experience_current', this)" style="max-width:300px;">
+                    <span class="small text-muted align-self-center" id="rb-upload-status-current"></span>
+                </div>
+                <textarea class="form-control form-control-sm" id="rb-experience-current" rows="8"
+                          placeholder="# Current Company — Your Role&#10;&#10;## Project 1&#10;- Built X achieving Y by doing Z&#10;- Reduced latency by 40% through...&#10;&#10;## Project 2&#10;- Architected microservice handling 150K req/min..."></textarea>
+            </div>
+
+            <!-- Previous Experience -->
+            <div class="mb-3">
+                <label class="form-label small fw-medium">Previous Work Experience (Markdown)</label>
+                <div class="d-flex gap-2 mb-2">
+                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
+                           onchange="uploadBuilderFile('experience_previous', this)" style="max-width:300px;">
+                    <span class="small text-muted align-self-center" id="rb-upload-status-previous"></span>
+                </div>
+                <textarea class="form-control form-control-sm" id="rb-experience-previous" rows="6"
+                          placeholder="# Previous Company — Your Role&#10;&#10;- Achievement 1&#10;- Achievement 2"></textarea>
+            </div>
+
+            <!-- Projects -->
+            <div class="mb-3">
+                <label class="form-label small fw-medium">Projects (Markdown)</label>
+                <div class="d-flex gap-2 mb-2">
+                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
+                           onchange="uploadBuilderFile('projects', this)" style="max-width:300px;">
+                    <span class="small text-muted align-self-center" id="rb-upload-status-projects"></span>
+                </div>
+                <textarea class="form-control form-control-sm" id="rb-projects" rows="6"
+                          placeholder="# Project Name&#10;Tech: Python, AWS, React&#10;- Built agentic pipeline processing 3000 Q&A pairs..."></textarea>
+            </div>
+
+            <!-- LaTeX Template -->
+            <div class="mb-3">
+                <label class="form-label small fw-medium">LaTeX Resume Template</label>
+                <div class="d-flex gap-2 mb-2">
+                    <input type="file" class="form-control form-control-sm" accept=".tex,.txt"
+                           onchange="uploadTemplateFile(this)" style="max-width:300px;">
+                    <span class="small text-muted align-self-center" id="rb-upload-status-template"></span>
+                </div>
+                <textarea class="form-control form-control-sm font-monospace" id="rb-template" rows="6"
+                          placeholder="\documentclass[letterpaper,10pt]{article}&#10;..."></textarea>
+                <div class="form-text">Jake's Resume template is pre-loaded. Replace with your own if needed.</div>
+            </div>
+        </div>
+
         <!-- Preferences -->
         <div class="setup-section">
             <h6><i class="bi bi-sliders me-2"></i>Job Search Preferences</h6>
@@ -609,6 +670,9 @@ function fillForm(p, prefs) {
         document.getElementById('f-resume-text').value = p.raw_resume_text;
     }
 
+    // Load resume builder files
+    loadResumeBuilderFiles();
+
     // Preferences
     document.getElementById('f-target-roles').value = arrayToCsv(prefs.target_roles);
     document.getElementById('f-locations').value = arrayToCsv(prefs.locations);
@@ -778,6 +842,9 @@ async function saveSetup(goToDashboard = false) {
         if (!resp.ok) {
             showToast(data.error || 'Save failed', 'error');
         } else {
+            // Also save resume builder files
+            await saveResumeBuilderFiles();
+
             if (goToDashboard) {
                 window.location.href = '/';
                 return;
@@ -791,6 +858,112 @@ async function saveSetup(goToDashboard = false) {
 
     btn.disabled = false;
     btn.innerHTML = originalHtml;
+}
+
+// ---------------------------------------------------------------------------
+// Resume Builder Files
+// ---------------------------------------------------------------------------
+
+async function loadResumeBuilderFiles() {
+    try {
+        const resp = await fetch('/api/resume-builder/files');
+        const data = await resp.json();
+        const files = data.files || {};
+
+        document.getElementById('rb-experience-current').value = files.experience_current || '';
+        document.getElementById('rb-experience-previous').value = files.experience_previous || '';
+        document.getElementById('rb-projects').value = files.projects || '';
+        document.getElementById('rb-template').value = files.template || '';
+
+        // Show status
+        const status = data.status || {};
+        const statusEl = document.getElementById('rb-status');
+        if (status.ready) {
+            statusEl.innerHTML = '<div class="alert alert-success py-2 small"><i class="bi bi-check-circle me-1"></i>Resume builder ready — all input files configured</div>';
+        } else {
+            const issues = (status.issues || []).map(i => `<li>${i}</li>`).join('');
+            statusEl.innerHTML = `<div class="alert alert-warning py-2 small"><i class="bi bi-exclamation-triangle me-1"></i>Resume builder needs setup:<ul class="mb-0 mt-1">${issues}</ul></div>`;
+        }
+    } catch(e) {
+        // Silent — not critical
+    }
+}
+
+async function saveResumeBuilderFiles() {
+    const files = {
+        experience_current: document.getElementById('rb-experience-current').value,
+        experience_previous: document.getElementById('rb-experience-previous').value,
+        projects: document.getElementById('rb-projects').value,
+        template: document.getElementById('rb-template').value,
+    };
+
+    // Only save if at least one field has content
+    if (Object.values(files).some(v => v.trim())) {
+        try {
+            await fetch('/api/resume-builder/files', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({files})
+            });
+        } catch(e) {
+            // Silent — profile save is the primary action
+        }
+    }
+}
+
+async function uploadBuilderFile(fileType, input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const statusId = fileType === 'experience_current' ? 'rb-upload-status-current'
+                   : fileType === 'experience_previous' ? 'rb-upload-status-previous'
+                   : 'rb-upload-status-projects';
+    const statusEl = document.getElementById(statusId);
+    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Extracting...';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch(`/api/resume-builder/upload/${fileType}`, {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            statusEl.textContent = data.error || 'Upload failed';
+            statusEl.className = 'small text-danger align-self-center';
+            return;
+        }
+
+        // Fill the textarea with extracted text
+        const textareaId = fileType === 'experience_current' ? 'rb-experience-current'
+                         : fileType === 'experience_previous' ? 'rb-experience-previous'
+                         : 'rb-projects';
+        document.getElementById(textareaId).value = data.text;
+        statusEl.textContent = `Extracted ${data.chars} chars from ${file.name}`;
+        statusEl.className = 'small text-success align-self-center';
+    } catch(e) {
+        statusEl.textContent = 'Upload failed';
+        statusEl.className = 'small text-danger align-self-center';
+    }
+}
+
+async function uploadTemplateFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const statusEl = document.getElementById('rb-upload-status-template');
+    try {
+        const text = await file.text();
+        document.getElementById('rb-template').value = text;
+        statusEl.textContent = `Loaded ${file.name}`;
+        statusEl.className = 'small text-success align-self-center';
+    } catch(e) {
+        statusEl.textContent = 'Failed to read file';
+        statusEl.className = 'small text-danger align-self-center';
+    }
 }
 </script>
 </body>
