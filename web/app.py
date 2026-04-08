@@ -109,30 +109,142 @@ def api_profile_full():
     })
 
 
-@app.route("/api/resume/upload", methods=["POST"])
-def api_resume_upload():
-    """Upload a resume PDF, extract text, and return it."""
+@app.route("/api/resume/parse", methods=["POST"])
+def api_resume_parse():
+    """Upload a resume (PDF/DOCX/TXT), extract text, parse with AI into structured profile JSON."""
+    import os
+    import tempfile
+
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
     file = request.files["file"]
-    if not file.filename.lower().endswith(".pdf"):
-        return jsonify({"error": "Only PDF files are supported"}), 400
+    filename = (file.filename or "").lower()
 
-    import tempfile
-    from utils.resume_parser import parse_resume_pdf
+    if not any(filename.endswith(ext) for ext in (".pdf", ".docx", ".doc", ".txt")):
+        return jsonify({"error": "Supported formats: PDF, DOCX, TXT"}), 400
 
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+    # Save to temp file
+    suffix = "." + filename.rsplit(".", 1)[-1]
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         file.save(tmp.name)
         tmp_path = tmp.name
 
     try:
-        text = parse_resume_pdf(tmp_path)
-        return jsonify({"text": text, "chars": len(text)})
-    except (FileNotFoundError, ValueError) as e:
+        # Extract text based on file type
+        resume_text = _extract_resume_text(tmp_path, suffix)
+
+        if not resume_text or len(resume_text.strip()) < 50:
+            return jsonify({"error": "Could not extract enough text from the file"}), 400
+
+        # Parse with AI
+        profile = _parse_resume_with_ai(resume_text)
+        profile["raw_resume_text"] = resume_text
+
+        return jsonify({"profile": profile, "raw_text": resume_text})
+
+    except Exception as e:
         return jsonify({"error": str(e)}), 400
     finally:
         os.unlink(tmp_path)
+
+
+def _extract_resume_text(file_path: str, suffix: str) -> str:
+    """Extract plain text from PDF, DOCX, or TXT file."""
+    if suffix == ".pdf":
+        from utils.resume_parser import parse_resume_pdf
+        return parse_resume_pdf(file_path)
+
+    elif suffix in (".docx", ".doc"):
+        from docx import Document
+        doc = Document(file_path)
+        return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+
+    else:  # .txt
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()
+
+
+def _parse_resume_with_ai(resume_text: str) -> dict:
+    """Send resume text to AI and get structured profile JSON back."""
+    from utils.ai_client import chat_completion
+    import re
+
+    system = """You are a resume parser. Extract structured data from the resume text below.
+Return valid JSON only with exactly these fields. If a field cannot be determined, use empty string or empty array.
+Do NOT invent information that isn't in the resume."""
+
+    user_msg = f"""Parse this resume into structured JSON:
+
+{resume_text[:6000]}
+
+Return this exact JSON structure:
+{{
+  "name": "Full Name",
+  "email": "email@example.com",
+  "phone": "phone number",
+  "location": "City, State",
+  "linkedin": "linkedin URL or empty string",
+  "github": "github URL or empty string",
+  "summary": "2-3 sentence professional summary based on their experience",
+  "years_of_experience": <integer>,
+  "current_title": "most recent job title",
+  "target_titles": ["title1", "title2", "title3"],
+  "skills": {{
+    "languages": ["lang1", "lang2"],
+    "frameworks": ["fw1", "fw2"],
+    "infrastructure": ["infra1", "infra2"],
+    "databases": ["db1", "db2"],
+    "other": ["skill1", "skill2"]
+  }},
+  "experience": [
+    {{
+      "title": "Job Title",
+      "company": "Company Name",
+      "start": "YYYY-MM",
+      "end": "YYYY-MM or present",
+      "bullets": ["achievement 1", "achievement 2"]
+    }}
+  ],
+  "education": [
+    {{
+      "degree": "Degree Name",
+      "school": "School Name",
+      "year": 2024
+    }}
+  ]
+}}"""
+
+    raw = chat_completion(system=system, user_message=user_msg, max_tokens=2000)
+
+    # Extract JSON from response
+    json_match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not json_match:
+        raise ValueError("AI could not parse the resume into structured data")
+
+    parsed = json.loads(json_match.group())
+
+    # Ensure all required fields exist with defaults
+    parsed.setdefault("name", "")
+    parsed.setdefault("email", "")
+    parsed.setdefault("phone", "")
+    parsed.setdefault("location", "")
+    parsed.setdefault("linkedin", "")
+    parsed.setdefault("github", "")
+    parsed.setdefault("summary", "")
+    parsed.setdefault("years_of_experience", 0)
+    parsed.setdefault("current_title", "")
+    parsed.setdefault("target_titles", [])
+    parsed.setdefault("skills", {"languages": [], "frameworks": [], "infrastructure": [], "databases": [], "other": []})
+    parsed.setdefault("experience", [])
+    parsed.setdefault("education", [])
+    parsed.setdefault("raw_resume_text", "")
+
+    # Ensure skills has all sub-keys
+    for key in ("languages", "frameworks", "infrastructure", "databases", "other"):
+        parsed["skills"].setdefault(key, [])
+
+    return parsed
 
 
 @app.route("/api/profile/full", methods=["POST"])

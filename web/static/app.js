@@ -11,7 +11,17 @@ let currentDetailJob = null;
 // Init
 // ---------------------------------------------------------------------------
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Redirect to setup if no profile exists yet (first-time use)
+    try {
+        const resp = await fetch('/api/profile/full');
+        const data = await resp.json();
+        if (!data.exists) {
+            window.location.href = '/setup';
+            return;
+        }
+    } catch(e) { /* continue to dashboard */ }
+
     loadJobs('queued');
     loadStats();
 });

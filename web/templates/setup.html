@@ -31,6 +31,35 @@
             border-top: 1px solid #dee2e6; padding: 16px 0;
             z-index: 100; margin: 0 -12px; padding-left: 12px; padding-right: 12px;
         }
+        /* Upload area */
+        .upload-zone {
+            border: 2px dashed #dee2e6; border-radius: 16px; padding: 48px;
+            text-align: center; cursor: pointer; transition: all 0.2s;
+            background: #fafbfc;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #0d6efd; background: #f0f6ff;
+        }
+        .upload-zone i { font-size: 3rem; color: #adb5bd; }
+        .upload-zone:hover i, .upload-zone.dragover i { color: #0d6efd; }
+        .step-indicator { display: flex; gap: 8px; align-items: center; }
+        .step-dot {
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 600;
+        }
+        .step-dot.active { background: #0d6efd; color: white; }
+        .step-dot.done { background: #198754; color: white; }
+        .step-dot.pending { background: #e9ecef; color: #6c757d; }
+        .step-line { width: 40px; height: 2px; background: #dee2e6; }
+        .step-line.done { background: #198754; }
+        /* Parsing spinner */
+        .parsing-overlay {
+            text-align: center; padding: 60px 20px;
+        }
+        .parsing-overlay .spinner-border { width: 3rem; height: 3rem; }
+        /* AI-filled highlight */
+        .ai-filled { border-color: #86b7fe; background-color: #f0f6ff; }
     </style>
 </head>
 <body>
@@ -41,10 +70,17 @@
         <span class="navbar-brand fw-bold">
             <i class="bi bi-briefcase-fill text-primary me-2"></i>Job Pipeline
         </span>
-        <div class="d-flex align-items-center gap-2">
-            <span class="text-muted small me-2">Profile & Settings</span>
+        <div class="d-flex align-items-center gap-3">
+            <!-- Step indicator -->
+            <div class="step-indicator" id="step-indicator">
+                <div class="step-dot active" id="dot-1">1</div>
+                <div class="step-line" id="line-1"></div>
+                <div class="step-dot pending" id="dot-2">2</div>
+                <div class="step-line" id="line-2"></div>
+                <div class="step-dot pending" id="dot-3">3</div>
+            </div>
             <a href="/" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                <i class="bi bi-arrow-left me-1"></i>Dashboard
             </a>
         </div>
     </div>
@@ -52,13 +88,70 @@
 
 <div class="container py-4" style="max-width: 900px;">
 
-    <!-- Loading state -->
-    <div id="setup-loading" class="text-center py-5">
-        <div class="spinner-border text-primary"></div>
-        <p class="text-muted mt-2">Loading profile...</p>
+    <!-- ================================================================== -->
+    <!-- STEP 1: Upload Resume                                               -->
+    <!-- ================================================================== -->
+    <div id="step-upload">
+        <div class="text-center mb-4">
+            <h4 class="fw-bold">Get Started</h4>
+            <p class="text-muted">Upload your resume and we'll auto-fill everything for you</p>
+        </div>
+
+        <div class="setup-section">
+            <div class="upload-zone" id="upload-zone"
+                 onclick="document.getElementById('resume-file').click()"
+                 ondragover="event.preventDefault(); this.classList.add('dragover')"
+                 ondragleave="this.classList.remove('dragover')"
+                 ondrop="handleDrop(event)">
+                <i class="bi bi-cloud-arrow-up d-block mb-3"></i>
+                <p class="fw-medium mb-1">Drag & drop your resume here</p>
+                <p class="text-muted small mb-3">or click to browse</p>
+                <span class="badge bg-light text-dark">PDF</span>
+                <span class="badge bg-light text-dark">DOCX</span>
+                <span class="badge bg-light text-dark">TXT</span>
+                <input type="file" id="resume-file" accept=".pdf,.docx,.doc,.txt"
+                       onchange="uploadResume(this.files[0])" style="display:none;">
+            </div>
+
+            <div class="text-center mt-4">
+                <span class="text-muted small">or</span>
+                <br>
+                <button class="btn btn-link btn-sm text-decoration-none" onclick="skipToForm()">
+                    Fill in manually without a resume
+                </button>
+                <span id="existing-profile-link" style="display:none;">
+                    &nbsp;|&nbsp;
+                    <button class="btn btn-link btn-sm text-decoration-none" onclick="editExisting()">
+                        Edit existing profile
+                    </button>
+                </span>
+            </div>
+        </div>
     </div>
 
+    <!-- ================================================================== -->
+    <!-- STEP 2: Parsing (spinner)                                           -->
+    <!-- ================================================================== -->
+    <div id="step-parsing" style="display:none;">
+        <div class="setup-section">
+            <div class="parsing-overlay">
+                <div class="spinner-border text-primary mb-3"></div>
+                <h5>Parsing your resume...</h5>
+                <p class="text-muted" id="parse-status">Extracting text and analyzing with AI</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- STEP 3: Review & Edit Form                                          -->
+    <!-- ================================================================== -->
     <form id="setup-form" style="display:none;" onsubmit="return false;">
+
+        <!-- Parse success banner -->
+        <div class="alert alert-success py-2 mb-3 d-flex align-items-center" id="parse-banner" style="display:none !important;">
+            <i class="bi bi-magic me-2"></i>
+            <span class="small">Profile auto-filled from your resume. Review the fields below and fix anything that looks off.</span>
+        </div>
 
         <!-- Basic Information -->
         <div class="setup-section">
@@ -159,23 +252,9 @@
 
         <!-- Raw Resume Text -->
         <div class="setup-section">
-            <h6><i class="bi bi-file-earmark-text me-2"></i>Resume</h6>
-
-            <!-- PDF Upload -->
-            <div class="mb-3 p-3 bg-light rounded border">
-                <label class="form-label small fw-medium">Upload Resume PDF</label>
-                <div class="d-flex align-items-center gap-3">
-                    <input type="file" class="form-control form-control-sm" id="f-resume-pdf" accept=".pdf"
-                           onchange="uploadResumePdf(this)" style="max-width: 350px;">
-                    <span id="pdf-upload-status" class="small text-muted"></span>
-                </div>
-                <div class="form-text">Upload a PDF and we'll extract the text automatically. This replaces the text below.</div>
-            </div>
-
-            <!-- Plain text fallback -->
-            <label class="form-label small">Resume Text <span class="text-muted">(auto-filled from PDF or paste manually)</span></label>
-            <textarea class="form-control" id="f-resume-text" rows="8"
-                      placeholder="Paste your full resume text here, or upload a PDF above..."></textarea>
+            <h6><i class="bi bi-file-earmark-text me-2"></i>Raw Resume Text</h6>
+            <p class="text-muted small mb-2">This is the full text used by the AI for scoring and generation.</p>
+            <textarea class="form-control" id="f-resume-text" rows="6"></textarea>
         </div>
 
         <!-- Preferences -->
@@ -192,7 +271,7 @@
                     <label class="form-label small">Locations / Countries</label>
                     <input type="text" class="form-control tag-input" id="f-locations"
                            placeholder="United States, Canada, Remote">
-                    <div class="form-text">Comma-separated. Leave empty to search all locations. Examples: "United States", "United Kingdom", "Germany", "Remote", "San Francisco, CA"</div>
+                    <div class="form-text">Comma-separated. Leave empty to search all locations.</div>
                 </div>
                 <div class="col-12">
                     <label class="form-label small">Blacklisted Companies</label>
@@ -251,9 +330,14 @@
         <div class="save-bar">
             <div class="d-flex justify-content-between align-items-center">
                 <div id="save-status" class="text-muted small"></div>
-                <button type="button" class="btn btn-primary" id="btn-save" onclick="saveSetup()">
-                    <i class="bi bi-check-lg me-1"></i>Save Profile & Preferences
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" id="btn-save-stay" onclick="saveSetup(false)">
+                        <i class="bi bi-check-lg me-1"></i>Save
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btn-save-go" onclick="saveSetup(true)">
+                        <i class="bi bi-arrow-right me-1"></i>Save & Go to Dashboard
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -273,19 +357,27 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 // ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+let expCounter = 0;
+let eduCounter = 0;
+let profileFromAI = false; // true if profile was parsed from resume
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
 function csvToArray(str) {
     if (!str) return [];
     return str.split(',').map(s => s.trim()).filter(s => s);
 }
-
 function arrayToCsv(arr) {
     if (!arr || !Array.isArray(arr)) return '';
     return arr.join(', ');
 }
-
+function escapeAttr(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     const icon = document.getElementById('toast-icon');
@@ -295,100 +387,247 @@ function showToast(message, type = 'info') {
     if (type === 'success') { toast.classList.add('text-bg-success'); icon.className = 'bi bi-check-circle-fill'; }
     else if (type === 'error') { toast.classList.add('text-bg-danger'); icon.className = 'bi bi-exclamation-circle-fill'; }
     else { toast.classList.add('text-bg-light'); icon.className = 'bi bi-info-circle-fill'; }
-    new bootstrap.Toast(toast, {delay: 3000}).show();
+    new bootstrap.Toast(toast, {delay: 4000}).show();
 }
 
 // ---------------------------------------------------------------------------
-// Load existing data
+// Step navigation
 // ---------------------------------------------------------------------------
+function setStep(step) {
+    document.getElementById('step-upload').style.display = step === 1 ? 'block' : 'none';
+    document.getElementById('step-parsing').style.display = step === 2 ? 'block' : 'none';
+    document.getElementById('setup-form').style.display = step === 3 ? 'block' : 'none';
 
-let expCounter = 0;
-let eduCounter = 0;
+    for (let i = 1; i <= 3; i++) {
+        const dot = document.getElementById(`dot-${i}`);
+        dot.className = 'step-dot ' + (i < step ? 'done' : i === step ? 'active' : 'pending');
+        dot.innerHTML = i < step ? '<i class="bi bi-check2"></i>' : i;
+    }
+    document.getElementById('line-1').className = 'step-line' + (step > 1 ? ' done' : '');
+    document.getElementById('line-2').className = 'step-line' + (step > 2 ? ' done' : '');
 
-document.addEventListener('DOMContentLoaded', loadSetupData);
+    if (step === 3) window.scrollTo({top: 0, behavior: 'smooth'});
+}
 
-async function loadSetupData() {
+// ---------------------------------------------------------------------------
+// Step 1: Check if profile exists on load
+// ---------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', async () => {
     try {
         const resp = await fetch('/api/profile/full');
         const data = await resp.json();
-        const p = data.profile || {};
-        const prefs = data.preferences || {};
-
-        // Basic info
-        document.getElementById('f-name').value = p.name || '';
-        document.getElementById('f-email').value = p.email || '';
-        document.getElementById('f-phone').value = p.phone || '';
-        document.getElementById('f-location').value = p.location || '';
-        document.getElementById('f-linkedin').value = p.linkedin || '';
-        document.getElementById('f-github').value = p.github || '';
-        document.getElementById('f-current-title').value = p.current_title || '';
-        document.getElementById('f-yoe').value = p.years_of_experience || '';
-        document.getElementById('f-target-titles').value = arrayToCsv(p.target_titles);
-
-        // Summary
-        document.getElementById('f-summary').value = p.summary || '';
-
-        // Skills
-        const skills = p.skills || {};
-        document.getElementById('f-languages').value = arrayToCsv(skills.languages);
-        document.getElementById('f-frameworks').value = arrayToCsv(skills.frameworks);
-        document.getElementById('f-infrastructure').value = arrayToCsv(skills.infrastructure);
-        document.getElementById('f-databases').value = arrayToCsv(skills.databases);
-        document.getElementById('f-other-skills').value = arrayToCsv(skills.other);
-
-        // Experience
-        const experience = p.experience || [];
-        if (experience.length > 0) {
-            experience.forEach(exp => addExperienceEntry(exp));
-        } else {
-            addExperienceEntry();
+        if (data.exists) {
+            document.getElementById('existing-profile-link').style.display = 'inline';
         }
+    } catch(e) {}
+});
 
-        // Education
-        const education = p.education || [];
-        if (education.length > 0) {
-            education.forEach(edu => addEducationEntry(edu));
-        } else {
+// "Edit existing profile" — load saved data and jump to form
+async function editExisting() {
+    setStep(2);
+    document.getElementById('parse-status').textContent = 'Loading saved profile...';
+    try {
+        const resp = await fetch('/api/profile/full');
+        const data = await resp.json();
+        fillForm(data.profile || {}, data.preferences || {});
+        document.getElementById('save-status').textContent = 'Editing existing profile';
+        setStep(3);
+    } catch(e) {
+        showToast('Failed to load profile', 'error');
+        setStep(1);
+    }
+}
+
+// "Fill manually" — load defaults and jump to form
+async function skipToForm() {
+    setStep(2);
+    document.getElementById('parse-status').textContent = 'Loading defaults...';
+    try {
+        const resp = await fetch('/api/profile/full');
+        const data = await resp.json();
+        fillForm(data.profile || {}, data.preferences || {});
+        // Clear profile fields so user fills them (keep preferences as defaults)
+        if (!data.exists) {
+            document.getElementById('f-name').value = '';
+            document.getElementById('f-email').value = '';
+            document.getElementById('f-phone').value = '';
+            document.getElementById('f-location').value = '';
+            document.getElementById('f-linkedin').value = '';
+            document.getElementById('f-github').value = '';
+            document.getElementById('f-summary').value = '';
+            document.getElementById('f-current-title').value = '';
+            document.getElementById('f-yoe').value = '';
+            document.getElementById('f-target-titles').value = '';
+            document.getElementById('f-resume-text').value = '';
+            document.getElementById('experience-entries').innerHTML = '';
+            document.getElementById('education-entries').innerHTML = '';
+            addExperienceEntry();
             addEducationEntry();
         }
-
-        // Raw resume
-        document.getElementById('f-resume-text').value = p.raw_resume_text || '';
-
-        // Preferences
-        document.getElementById('f-target-roles').value = arrayToCsv(prefs.target_roles);
-        document.getElementById('f-locations').value = arrayToCsv(prefs.locations);
-        document.getElementById('f-blacklist').value = arrayToCsv(prefs.blacklist_companies);
-        document.getElementById('f-min-salary').value = prefs.min_salary || '';
-        document.getElementById('f-visa').checked = prefs.visa_sponsorship_required || false;
-        document.getElementById('f-remote-only').checked = prefs.remote_only || false;
-        document.getElementById('f-greenhouse').value = arrayToCsv(prefs.greenhouse_boards);
-        document.getElementById('f-lever').value = arrayToCsv(prefs.lever_boards);
-
-        // Seniority checkboxes
-        const seniority = prefs.seniority_levels || [];
-        document.getElementById('f-seniority-entry').checked = seniority.includes('entry-level');
-        document.getElementById('f-seniority-mid').checked = seniority.includes('mid');
-        document.getElementById('f-seniority-senior').checked = seniority.includes('senior');
-
-        if (data.exists) {
-            document.getElementById('save-status').textContent = 'Profile loaded from existing data';
-        } else {
-            document.getElementById('save-status').textContent = 'No existing profile found — fill in your details';
-        }
-
-    } catch (e) {
-        showToast('Failed to load profile: ' + e.message, 'error');
+        document.getElementById('save-status').textContent = 'Fill in your details below';
+        setStep(3);
+    } catch(e) {
+        showToast('Failed to load defaults', 'error');
+        setStep(1);
     }
-
-    document.getElementById('setup-loading').style.display = 'none';
-    document.getElementById('setup-form').style.display = 'block';
 }
 
 // ---------------------------------------------------------------------------
-// Dynamic Experience Entries
+// Step 1: Resume upload
 // ---------------------------------------------------------------------------
+function handleDrop(event) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('dragover');
+    const file = event.dataTransfer.files[0];
+    if (file) uploadResume(file);
+}
 
+async function uploadResume(file) {
+    if (!file) return;
+
+    const allowed = ['.pdf', '.docx', '.doc', '.txt'];
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowed.includes(ext)) {
+        showToast('Please upload a PDF, DOCX, or TXT file', 'error');
+        return;
+    }
+
+    // Move to step 2 (parsing spinner)
+    setStep(2);
+    document.getElementById('parse-status').textContent = `Extracting text from ${file.name}...`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        document.getElementById('parse-status').textContent = 'Parsing resume with AI... (this may take a few seconds)';
+
+        const resp = await fetch('/api/resume/parse', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            showToast(data.error || 'Failed to parse resume', 'error');
+            setStep(1);
+            return;
+        }
+
+        // Load default preferences for the preferences section
+        let prefs = {};
+        try {
+            const prefsResp = await fetch('/api/profile/full');
+            const prefsData = await prefsResp.json();
+            prefs = prefsData.preferences || {};
+        } catch(e) {}
+
+        // Fill the form with AI-parsed profile + default preferences
+        profileFromAI = true;
+        fillForm(data.profile, prefs);
+        document.getElementById('f-resume-text').value = data.raw_text || '';
+
+        // Show success banner
+        document.getElementById('parse-banner').style.display = 'flex !important';
+        document.getElementById('parse-banner').style.cssText = 'display: flex !important;';
+        document.getElementById('save-status').textContent = 'Parsed from resume — review and save';
+
+        // Highlight AI-filled fields that have values
+        highlightFilledFields();
+
+        showToast('Resume parsed! Review the fields below.', 'success');
+        setStep(3);
+
+    } catch(e) {
+        showToast('Upload failed: ' + e.message, 'error');
+        setStep(1);
+    }
+}
+
+function highlightFilledFields() {
+    // Briefly highlight fields that were filled by AI
+    const fields = ['f-name','f-email','f-phone','f-location','f-linkedin','f-github',
+                    'f-current-title','f-yoe','f-summary','f-languages','f-frameworks',
+                    'f-infrastructure','f-databases','f-other-skills','f-target-titles'];
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value) {
+            el.classList.add('ai-filled');
+            setTimeout(() => el.classList.remove('ai-filled'), 3000);
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Fill form from profile + preferences data
+// ---------------------------------------------------------------------------
+function fillForm(p, prefs) {
+    // Basic info
+    document.getElementById('f-name').value = p.name || '';
+    document.getElementById('f-email').value = p.email || '';
+    document.getElementById('f-phone').value = p.phone || '';
+    document.getElementById('f-location').value = p.location || '';
+    document.getElementById('f-linkedin').value = p.linkedin || '';
+    document.getElementById('f-github').value = p.github || '';
+    document.getElementById('f-current-title').value = p.current_title || '';
+    document.getElementById('f-yoe').value = p.years_of_experience || '';
+    document.getElementById('f-target-titles').value = arrayToCsv(p.target_titles);
+
+    // Summary
+    document.getElementById('f-summary').value = p.summary || '';
+
+    // Skills
+    const skills = p.skills || {};
+    document.getElementById('f-languages').value = arrayToCsv(skills.languages);
+    document.getElementById('f-frameworks').value = arrayToCsv(skills.frameworks);
+    document.getElementById('f-infrastructure').value = arrayToCsv(skills.infrastructure);
+    document.getElementById('f-databases').value = arrayToCsv(skills.databases);
+    document.getElementById('f-other-skills').value = arrayToCsv(skills.other);
+
+    // Experience — clear existing entries and add new ones
+    document.getElementById('experience-entries').innerHTML = '';
+    expCounter = 0;
+    const experience = p.experience || [];
+    if (experience.length > 0) {
+        experience.forEach(exp => addExperienceEntry(exp));
+    } else {
+        addExperienceEntry();
+    }
+
+    // Education
+    document.getElementById('education-entries').innerHTML = '';
+    eduCounter = 0;
+    const education = p.education || [];
+    if (education.length > 0) {
+        education.forEach(edu => addEducationEntry(edu));
+    } else {
+        addEducationEntry();
+    }
+
+    // Raw resume text
+    if (p.raw_resume_text) {
+        document.getElementById('f-resume-text').value = p.raw_resume_text;
+    }
+
+    // Preferences
+    document.getElementById('f-target-roles').value = arrayToCsv(prefs.target_roles);
+    document.getElementById('f-locations').value = arrayToCsv(prefs.locations);
+    document.getElementById('f-blacklist').value = arrayToCsv(prefs.blacklist_companies);
+    document.getElementById('f-min-salary').value = prefs.min_salary || '';
+    document.getElementById('f-visa').checked = prefs.visa_sponsorship_required || false;
+    document.getElementById('f-remote-only').checked = prefs.remote_only || false;
+    document.getElementById('f-greenhouse').value = arrayToCsv(prefs.greenhouse_boards);
+    document.getElementById('f-lever').value = arrayToCsv(prefs.lever_boards);
+
+    const seniority = prefs.seniority_levels || [];
+    document.getElementById('f-seniority-entry').checked = seniority.includes('entry-level');
+    document.getElementById('f-seniority-mid').checked = seniority.includes('mid');
+    document.getElementById('f-seniority-senior').checked = seniority.includes('senior');
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic Experience / Education Entries
+// ---------------------------------------------------------------------------
 function addExperienceEntry(data) {
     const idx = expCounter++;
     const container = document.getElementById('experience-entries');
@@ -423,10 +662,6 @@ function addExperienceEntry(data) {
     container.appendChild(div);
 }
 
-// ---------------------------------------------------------------------------
-// Dynamic Education Entries
-// ---------------------------------------------------------------------------
-
 function addEducationEntry(data) {
     const idx = eduCounter++;
     const container = document.getElementById('education-entries');
@@ -456,59 +691,19 @@ function addEducationEntry(data) {
 }
 
 function removeEntry(id) {
-    const el = document.getElementById(id);
-    if (el) el.remove();
-}
-
-function escapeAttr(str) {
-    if (!str) return '';
-    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    document.getElementById(id)?.remove();
 }
 
 // ---------------------------------------------------------------------------
 // Save
 // ---------------------------------------------------------------------------
-
-async function uploadResumePdf(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const status = document.getElementById('pdf-upload-status');
-    status.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Extracting text...';
-    status.className = 'small text-primary';
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const resp = await fetch('/api/resume/upload', {
-            method: 'POST',
-            body: formData,
-        });
-        const data = await resp.json();
-
-        if (!resp.ok) {
-            status.textContent = data.error || 'Upload failed';
-            status.className = 'small text-danger';
-            return;
-        }
-
-        document.getElementById('f-resume-text').value = data.text;
-        status.textContent = `Extracted ${data.chars} characters from ${file.name}`;
-        status.className = 'small text-success';
-        showToast('Resume text extracted from PDF', 'success');
-    } catch (e) {
-        status.textContent = 'Upload failed: ' + e.message;
-        status.className = 'small text-danger';
-    }
-}
-
-async function saveSetup() {
-    const btn = document.getElementById('btn-save');
+async function saveSetup(goToDashboard = false) {
+    const btn = goToDashboard ? document.getElementById('btn-save-go') : document.getElementById('btn-save-stay');
     btn.disabled = true;
+    const originalHtml = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
-    // Collect experience entries
+    // Collect experience
     const experience = [];
     document.querySelectorAll('#experience-entries .dynamic-entry').forEach(entry => {
         const title = entry.querySelector('[data-field="title"]').value.trim();
@@ -522,18 +717,16 @@ async function saveSetup() {
         }
     });
 
-    // Collect education entries
+    // Collect education
     const education = [];
     document.querySelectorAll('#education-entries .dynamic-entry').forEach(entry => {
         const degree = entry.querySelector('[data-field="degree"]').value.trim();
         const school = entry.querySelector('[data-field="school"]').value.trim();
         const year = parseInt(entry.querySelector('[data-field="year"]').value) || null;
-        if (degree || school) {
-            education.push({ degree, school, year });
-        }
+        if (degree || school) education.push({ degree, school, year });
     });
 
-    // Collect seniority
+    // Seniority
     const seniority = [];
     if (document.getElementById('f-seniority-entry').checked) seniority.push('entry-level');
     if (document.getElementById('f-seniority-mid').checked) seniority.push('mid');
@@ -557,8 +750,7 @@ async function saveSetup() {
             databases: csvToArray(document.getElementById('f-databases').value),
             other: csvToArray(document.getElementById('f-other-skills').value),
         },
-        experience: experience,
-        education: education,
+        experience, education,
         raw_resume_text: document.getElementById('f-resume-text').value.trim(),
     };
 
@@ -586,6 +778,10 @@ async function saveSetup() {
         if (!resp.ok) {
             showToast(data.error || 'Save failed', 'error');
         } else {
+            if (goToDashboard) {
+                window.location.href = '/';
+                return;
+            }
             showToast('Profile and preferences saved!', 'success');
             document.getElementById('save-status').textContent = 'Saved just now';
         }
@@ -594,7 +790,7 @@ async function saveSetup() {
     }
 
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Profile & Preferences';
+    btn.innerHTML = originalHtml;
 }
 </script>
 </body>
