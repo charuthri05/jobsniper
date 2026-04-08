@@ -265,6 +265,14 @@ async function openDetail(jobId) {
             btnDownloadCL.style.display = 'none';
         }
 
+        // Tailored Resume download button
+        const btnDownloadResume = document.getElementById('btn-download-resume');
+        if (job.has_resume) {
+            btnDownloadResume.style.display = 'inline-block';
+        } else {
+            btnDownloadResume.style.display = 'none';
+        }
+
         // Resume Bullets
         const bulletsSection = document.getElementById('bullets-section');
         const bulletsList = document.getElementById('detail-bullets');
@@ -305,6 +313,12 @@ function cancelEditCL() {
     document.getElementById('cl-display').style.display = 'block';
     document.getElementById('cl-editor').style.display = 'none';
     document.getElementById('cl-edit-actions').style.display = 'none';
+}
+
+function downloadResume() {
+    if (currentDetailJob && currentDetailJob.id) {
+        window.open(`/api/job/${currentDetailJob.id}/resume/download`, '_blank');
+    }
 }
 
 async function saveCoverLetter() {

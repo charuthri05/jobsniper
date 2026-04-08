@@ -178,7 +178,8 @@ def score_job_with_ai(job: dict, profile: dict) -> dict:
   "score": <integer 0-100>,
   "reason": "<one sentence explaining the score>",
   "missing": ["<skill or experience gap 1>", "<gap 2>"],
-  "strengths": ["<matching strength 1>", "<strength 2>"]
+  "strengths": ["<matching strength 1>", "<strength 2>"],
+  "keywords": ["<top JD keyword 1>", "<top JD keyword 2>", "... up to 10 most important technical keywords/skills from the job description"]
 }}
 
 CANDIDATE PROFILE:
@@ -189,7 +190,7 @@ Title: {job.get('title', 'Unknown')}
 Company: {job.get('company', 'Unknown')}
 Description: {description}"""
 
-    raw_text = chat_completion(system=system_prompt, user_message=user_message, max_tokens=300)
+    raw_text = chat_completion(system=system_prompt, user_message=user_message, max_tokens=400)
 
     # Extract JSON even if wrapped in markdown code fences
     json_match = re.search(r"\{.*\}", raw_text, re.DOTALL)
@@ -205,6 +206,7 @@ Description: {description}"""
     result.setdefault("reason", "")
     result.setdefault("missing", [])
     result.setdefault("strengths", [])
+    result.setdefault("keywords", [])
 
     return result
 
@@ -293,6 +295,7 @@ def score_all_new_jobs(profile: dict, prefs: dict) -> dict:
                         notes=json.dumps({
                             "missing": result.get("missing", []),
                             "strengths": result.get("strengths", []),
+                            "keywords": result.get("keywords", []),
                         }),
                     )
 

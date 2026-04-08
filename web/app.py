@@ -6,11 +6,12 @@ review generated content, and bulk-submit applications.
 """
 
 import json
+import os
 import sys
 import threading
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, Response
+from flask import Flask, jsonify, render_template, request, Response, send_file
 
 # Ensure project root is importable
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -310,6 +311,8 @@ def _job_to_dict(job: dict) -> dict:
         except (json.JSONDecodeError, TypeError):
             pass
 
+    resume_pdf_path = str(PROJECT_ROOT / "data" / "resumes" / f"{job['id']}.pdf")
+
     return {
         "id": job["id"],
         "title": job.get("title", ""),
@@ -325,11 +328,13 @@ def _job_to_dict(job: dict) -> dict:
         "resume_bullets": bullets,
         "strengths": notes.get("strengths", []),
         "missing": notes.get("missing", []),
+        "keywords": notes.get("keywords", []),
         "description": job.get("description", ""),
         "salary_min": job.get("salary_min"),
         "salary_max": job.get("salary_max"),
         "date_posted": job.get("date_posted", ""),
         "date_scraped": job.get("date_scraped", ""),
+        "has_resume": os.path.exists(resume_pdf_path),
     }
 
 
@@ -413,6 +418,7 @@ def api_generate():
 
     def run_generation():
         from pipeline.generator import generate_cover_letter, generate_resume_bullets
+        from pipeline.resume_generator import generate_tailored_resume
         profile = load_profile()
         generated = 0
         errors = 0
@@ -428,7 +434,25 @@ def api_generate():
             try:
                 cl = generate_cover_letter(job, profile)
                 bullets = generate_resume_bullets(job, profile)
-                update_job(job_id, cover_letter=cl, resume_bullets=json.dumps(bullets))
+
+                # Generate tailored resume PDF
+                resume_path = None
+                try:
+                    resume_path = generate_tailored_resume(job, profile)
+                except Exception:
+                    pass  # Non-fatal: cover letter + bullets still saved
+
+                # Merge resume_path into existing notes
+                existing_notes = {}
+                try:
+                    existing_notes = json.loads(job.get("notes") or "{}")
+                except (json.JSONDecodeError, TypeError):
+                    pass
+                if resume_path:
+                    existing_notes["resume_path"] = resume_path
+                notes_json = json.dumps(existing_notes)
+
+                update_job(job_id, cover_letter=cl, resume_bullets=json.dumps(bullets), notes=notes_json)
                 generated += 1
             except Exception as e:
                 errors += 1
@@ -535,6 +559,29 @@ def api_download_cover_letter(job_id):
         )
     else:
         return _generate_pdf(cover_letter, job, profile, base_name)
+
+
+@app.route("/api/job/<job_id>/resume/download")
+def api_download_resume(job_id):
+    """Download a job's tailored resume PDF. Returns 404 if not generated yet."""
+    job = get_job_by_id(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    resume_path = PROJECT_ROOT / "data" / "resumes" / f"{job_id}.pdf"
+    if not resume_path.exists():
+        return jsonify({"error": "Tailored resume not generated yet"}), 404
+
+    company = job.get("company", "Company").replace(" ", "_").replace("/", "-")
+    title = job.get("title", "Role").replace(" ", "_").replace("/", "-")
+    download_name = f"Resume_{company}_{title}.pdf"
+
+    return send_file(
+        str(resume_path),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=download_name,
+    )
 
 
 def _generate_pdf(cover_letter: str, job: dict, profile: dict, base_name: str):

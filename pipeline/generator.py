@@ -11,15 +11,18 @@ import re
 from utils.ai_client import chat_completion
 from utils.db import get_jobs_by_status, update_job
 from utils.profile import load_profile, get_all_bullets
+from pipeline.resume_generator import generate_tailored_resume
 
 
 COVER_LETTER_SYSTEM = """You are a professional cover letter writer for software engineers targeting big tech.
 Write in first person. Be specific, not generic. Never use filler phrases like
 "I am excited to apply" or "I am a passionate engineer."
-Reference specific details from the job description. Keep it to 3 paragraphs, under 300 words."""
+Reference specific details from the job description. Keep it to 3 paragraphs, under 300 words.
+Naturally weave in the provided ATS keywords where they fit truthfully — do not force or list them."""
 
 RESUME_BULLET_SYSTEM = """You are a resume writer. Rewrite the candidate's existing bullet points to better match
 a specific job description. Keep the facts 100% accurate — only adjust emphasis and language.
+Naturally incorporate the provided ATS keywords where they fit truthfully.
 Return a JSON array of exactly 3 bullet strings."""
 
 
@@ -28,11 +31,13 @@ def generate_cover_letter(job: dict, profile: dict) -> str:
     Generate a tailored cover letter for a specific job.
     Returns the cover letter text.
     """
-    # Parse strengths from notes if available
+    # Parse strengths and keywords from notes if available
     strengths = []
+    keywords = []
     try:
         notes = json.loads(job.get("notes") or "{}")
         strengths = notes.get("strengths", [])
+        keywords = notes.get("keywords", [])
     except (json.JSONDecodeError, TypeError):
         pass
 
@@ -56,6 +61,7 @@ Title: {job.get('title', 'Unknown')}
 Company: {job.get('company', 'Unknown')}
 Why this role scored well: {job.get('score_reason', 'Strong match')}
 Strengths matched: {', '.join(strengths) if strengths else 'General fit'}
+Top ATS keywords to naturally incorporate: {', '.join(keywords) if keywords else 'N/A'}
 Description: {(job.get('description') or '')[:3000]}
 
 Output the cover letter text only. No subject line. No "Dear Hiring Manager" header."""
@@ -70,12 +76,22 @@ def generate_resume_bullets(job: dict, profile: dict) -> list[str]:
     """
     all_bullets = get_all_bullets(profile)
 
+    # Parse keywords from notes if available
+    keywords = []
+    try:
+        notes = json.loads(job.get("notes") or "{}")
+        keywords = notes.get("keywords", [])
+    except (json.JSONDecodeError, TypeError):
+        pass
+
     user_message = f"""Rewrite the top 3 most relevant bullets from this resume to match this job description.
 Use the job's language and keywords where truthful. Each bullet must start with a strong
 action verb and include a measurable impact where one exists.
 
 CANDIDATE BULLETS:
 {json.dumps(all_bullets, indent=2)}
+
+Top ATS keywords to naturally incorporate: {', '.join(keywords) if keywords else 'N/A'}
 
 JOB DESCRIPTION KEYWORDS AND REQUIREMENTS:
 {(job.get('description') or '')[:3000]}
@@ -135,11 +151,34 @@ def generate_for_queued_jobs(profile: dict | None = None) -> dict:
                 # Generate resume bullets
                 bullets = generate_resume_bullets(job, profile)
 
+                # Generate tailored resume PDF
+                resume_path = None
+                try:
+                    resume_path = generate_tailored_resume(job, profile)
+                    console.print(
+                        f"  [green]Resume PDF[/green] saved: {resume_path}"
+                    )
+                except Exception as resume_err:
+                    console.print(
+                        f"  [yellow]Resume PDF failed[/yellow] for {job['title']}: {resume_err}"
+                    )
+
+                # Merge resume_path into existing notes
+                existing_notes = {}
+                try:
+                    existing_notes = json.loads(job.get("notes") or "{}")
+                except (json.JSONDecodeError, TypeError):
+                    pass
+                if resume_path:
+                    existing_notes["resume_path"] = resume_path
+                notes_json = json.dumps(existing_notes)
+
                 # Save to database
                 update_job(
                     job["id"],
                     cover_letter=cover_letter,
                     resume_bullets=json.dumps(bullets),
+                    notes=notes_json,
                 )
 
                 stats["generated"] += 1
