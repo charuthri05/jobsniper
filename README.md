@@ -78,13 +78,6 @@ Both give free credits on signup. You choose during setup.
 
 Edit `data/preferences.json` to add or remove companies.
 
-## Built-in Filters
-
-- Blocks 40+ known **staffing/consultancy companies** (Infosys, Revature, TCS, etc.)
-- Detects **"no visa sponsorship"** language (if you need sponsorship)
-- Skips non-engineering titles before wasting API credits
-- Company blacklist, seniority level, salary floor
-
 ## Config
 
 - **`.env`** — API keys, AI provider, score threshold
