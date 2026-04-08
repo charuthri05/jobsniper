@@ -212,12 +212,21 @@ Description: {description}"""
 
 
 def _score_one(job: dict, profile: dict) -> tuple[dict, dict | None, Exception | None]:
-    """Score a single job with AI. Returns (job, result, error)."""
-    try:
-        result = score_job_with_ai(job, profile)
-        return (job, result, None)
-    except Exception as e:
-        return (job, None, e)
+    """Score a single job with AI. Retries on rate-limit (429) with exponential backoff."""
+    max_retries = 4
+    for attempt in range(max_retries):
+        try:
+            result = score_job_with_ai(job, profile)
+            return (job, result, None)
+        except Exception as e:
+            err_str = str(e).lower()
+            is_rate_limit = "429" in err_str or "rate" in err_str or "too many" in err_str
+            if is_rate_limit and attempt < max_retries - 1:
+                wait = (2 ** attempt) + (attempt * 0.5)  # 1s, 2.5s, 4.5s
+                time.sleep(wait)
+                continue
+            return (job, None, e)
+    return (job, None, Exception("Max retries exceeded"))
 
 
 def score_all_new_jobs(profile: dict, prefs: dict) -> dict:
