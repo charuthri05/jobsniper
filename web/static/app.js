@@ -311,8 +311,14 @@ function renderTable() {
                 <td onclick="openDetail('${job.id}')" class="text-muted small">${escapeHtml(location)}</td>
                 <td>${clIcon}</td>
                 <td>${cvIcon}</td>
-                <td>
-                    <a href="${job.url}" target="_blank" class="expand-icon" onclick="event.stopPropagation()" title="Open posting">
+                <td class="text-nowrap" onclick="event.stopPropagation()">
+                    <a href="javascript:void(0)" onclick="quickMarkApplied('${job.id}')" class="row-action text-success" title="Mark as applied">
+                        <i class="bi bi-check-circle"></i>
+                    </a>
+                    <a href="javascript:void(0)" onclick="quickSkip('${job.id}')" class="row-action text-danger ms-1" title="Not interested">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                    <a href="${job.url}" target="_blank" onclick="trackOpenPosting('${job.id}', '${escapeHtml(job.title)}', '${escapeHtml(job.company)}')" class="row-action text-muted ms-1" title="Open posting">
                         <i class="bi bi-box-arrow-up-right"></i>
                     </a>
                 </td>
@@ -1037,6 +1043,130 @@ async function skipSelected() {
             showToast('Failed to skip', 'error');
         }
     });
+}
+
+// ---------------------------------------------------------------------------
+// Quick Row Actions
+// ---------------------------------------------------------------------------
+
+async function quickMarkApplied(jobId) {
+    try {
+        await fetch(`/api/job/${jobId}/mark-applied`, {method: 'POST'});
+        // Remove row with animation
+        const row = document.querySelector(`tr[data-id="${jobId}"]`);
+        if (row) {
+            row.style.transition = 'opacity 0.3s, background 0.3s';
+            row.style.backgroundColor = '#d1e7dd';
+            row.style.opacity = '0';
+            setTimeout(() => {
+                jobs = jobs.filter(j => j.id !== jobId);
+                renderTable();
+                loadStats();
+            }, 350);
+        }
+        showToast('Marked as applied', 'success');
+    } catch(e) {
+        showToast('Failed to mark as applied', 'error');
+    }
+}
+
+async function quickSkip(jobId) {
+    try {
+        await fetch(`/api/job/${jobId}/skip`, {method: 'POST'});
+        const row = document.querySelector(`tr[data-id="${jobId}"]`);
+        if (row) {
+            row.style.transition = 'opacity 0.3s, background 0.3s';
+            row.style.backgroundColor = '#f8d7da';
+            row.style.opacity = '0';
+            setTimeout(() => {
+                jobs = jobs.filter(j => j.id !== jobId);
+                renderTable();
+                loadStats();
+            }, 350);
+        }
+        showToast('Job dismissed', 'info');
+    } catch(e) {
+        showToast('Failed to dismiss', 'error');
+    }
+}
+
+// ---------------------------------------------------------------------------
+// "Did you apply?" popup on return from external tab
+// ---------------------------------------------------------------------------
+
+let lastOpenedJob = null;
+
+function trackOpenPosting(jobId, title, company) {
+    lastOpenedJob = {id: jobId, title, company};
+}
+
+// Detect when user returns to this tab after opening a job posting
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && lastOpenedJob) {
+        const job = lastOpenedJob;
+        lastOpenedJob = null; // Only show once
+
+        // Small delay so the page settles
+        setTimeout(() => {
+            showApplyPrompt(job);
+        }, 500);
+    }
+});
+
+function showApplyPrompt(job) {
+    // Create a floating prompt at the top of the page
+    const existing = document.getElementById('apply-prompt');
+    if (existing) existing.remove();
+
+    const div = document.createElement('div');
+    div.id = 'apply-prompt';
+    div.className = 'apply-prompt';
+    div.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between">
+            <div>
+                <i class="bi bi-question-circle text-primary me-2"></i>
+                <strong>Did you apply to ${escapeHtml(job.title)}</strong>
+                <span class="text-muted"> at ${escapeHtml(job.company)}?</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-success btn-sm" onclick="confirmApplied('${job.id}')">
+                    <i class="bi bi-check-lg me-1"></i>Yes, applied
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="dismissApplyPrompt()">
+                    Not yet
+                </button>
+                <button class="btn btn-outline-danger btn-sm" onclick="confirmSkipFromPrompt('${job.id}')">
+                    Not interested
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.prepend(div);
+
+    // Auto-dismiss after 15 seconds
+    setTimeout(() => {
+        dismissApplyPrompt();
+    }, 15000);
+}
+
+function confirmApplied(jobId) {
+    dismissApplyPrompt();
+    quickMarkApplied(jobId);
+}
+
+function confirmSkipFromPrompt(jobId) {
+    dismissApplyPrompt();
+    quickSkip(jobId);
+}
+
+function dismissApplyPrompt() {
+    const el = document.getElementById('apply-prompt');
+    if (el) {
+        el.style.transition = 'opacity 0.3s, transform 0.3s';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-20px)';
+        setTimeout(() => el.remove(), 300);
+    }
 }
 
 // ---------------------------------------------------------------------------

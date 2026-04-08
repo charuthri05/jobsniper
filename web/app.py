@@ -1186,6 +1186,29 @@ def api_skip():
     return jsonify({"status": "ok", "skipped": len(job_ids)})
 
 
+@app.route("/api/job/<job_id>/mark-applied", methods=["POST"])
+def api_mark_applied(job_id):
+    """Quick mark a single job as submitted (applied externally)."""
+    from datetime import datetime, timezone
+    job = get_job_by_id(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    update_job(job_id, status="submitted", date_submitted=datetime.now(timezone.utc).isoformat())
+    from utils.db import insert_application
+    insert_application(job_id, "Applied externally (marked via dashboard)")
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/job/<job_id>/skip", methods=["POST"])
+def api_skip_single(job_id):
+    """Quick skip/dismiss a single job."""
+    job = get_job_by_id(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    update_job(job_id, status="skipped", score_reason="[MANUAL] Dismissed via dashboard")
+    return jsonify({"status": "ok"})
+
+
 @app.route("/api/job/<job_id>/cover-letter", methods=["PUT"])
 def api_update_cover_letter(job_id):
     """Update a job's cover letter."""
