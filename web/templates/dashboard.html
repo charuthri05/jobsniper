@@ -230,6 +230,27 @@
     </div>
 </div>
 
+<!-- Resume Generation Results Modal -->
+<div class="modal fade" id="resumeResultsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-person me-2"></i>Generated Resumes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="resume-results-body">
+                <!-- Filled by JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary btn-sm" onclick="downloadAllResumes()">
+                    <i class="bi bi-download me-1"></i>Download All
+                </button>
+                <button class="btn btn-primary" data-bs-dismiss="modal" onclick="loadJobs(currentTab); loadStats();">Done</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Auto-Fill Preview Modal -->
 <div class="modal fade" id="autofillPreviewModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">

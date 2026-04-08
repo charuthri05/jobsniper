@@ -784,6 +784,86 @@ def api_download_resume(job_id):
     )
 
 
+@app.route("/api/resumes/download-all", methods=["POST"])
+def api_download_all_resumes():
+    """Download multiple tailored resume PDFs as a single ZIP."""
+    import io
+    import zipfile
+
+    data = request.get_json()
+    job_ids = data.get("job_ids", [])
+    if not job_ids:
+        return jsonify({"error": "No jobs selected"}), 400
+
+    buf = io.BytesIO()
+    count = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for job_id in job_ids:
+            resume_path = PROJECT_ROOT / "data" / "resumes" / f"{job_id}.pdf"
+            if not resume_path.exists():
+                continue
+            job = get_job_by_id(job_id)
+            company = (job.get("company", "Company") if job else "Company").replace(" ", "_").replace("/", "-")
+            title = (job.get("title", "Role") if job else "Role").replace(" ", "_").replace("/", "-")
+            zf.write(str(resume_path), f"Resume_{company}_{title}.pdf")
+            count += 1
+
+    if count == 0:
+        return jsonify({"error": "No resumes generated yet"}), 404
+
+    buf.seek(0)
+    return Response(
+        buf.getvalue(),
+        mimetype="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="Tailored_Resumes_{count}_jobs.zip"'},
+    )
+
+
+def _register_pdf_fonts(pdf):
+    """Register Arial TTF fonts for Unicode support across macOS, Linux, Windows.
+    Falls back to Helvetica if no TTF found."""
+    import os
+    candidates = {
+        "regular": [
+            "/System/Library/Fonts/Supplemental/Arial.ttf",                     # macOS
+            "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf",                # Linux
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Linux fallback
+            "C:\\Windows\\Fonts\\arial.ttf",                                    # Windows
+        ],
+        "bold": [
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+            "/usr/share/fonts/truetype/msttcorefonts/Arial_Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "C:\\Windows\\Fonts\\arialbd.ttf",
+        ],
+        "italic": [
+            "/System/Library/Fonts/Supplemental/Arial Italic.ttf",
+            "/usr/share/fonts/truetype/msttcorefonts/Arial_Italic.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf",
+            "C:\\Windows\\Fonts\\ariali.ttf",
+        ],
+    }
+
+    def find(paths):
+        for p in paths:
+            if os.path.isfile(p):
+                return p
+        return None
+
+    regular = find(candidates["regular"])
+    bold = find(candidates["bold"])
+
+    if regular and bold:
+        pdf.add_font("arial", "", regular, uni=True)
+        pdf.add_font("arial", "B", bold, uni=True)
+        italic = find(candidates["italic"])
+        if italic:
+            pdf.add_font("arial", "I", italic, uni=True)
+        return "arial"
+
+    return "Helvetica"
+
+
 def _generate_pdf(cover_letter: str, job: dict, profile: dict, base_name: str):
     """Generate a professional cover letter PDF with Unicode support."""
     import io
@@ -792,19 +872,16 @@ def _generate_pdf(cover_letter: str, job: dict, profile: dict, base_name: str):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=25)
 
-    # Register Arial TTF (Unicode-safe) with regular + bold variants
-    pdf.add_font("arial", "", "/System/Library/Fonts/Supplemental/Arial.ttf", uni=True)
-    pdf.add_font("arial", "B", "/System/Library/Fonts/Supplemental/Arial Bold.ttf", uni=True)
-    pdf.add_font("arial", "I", "/System/Library/Fonts/Supplemental/Arial Italic.ttf", uni=True)
+    font = _register_pdf_fonts(pdf)
 
     pdf.add_page()
 
     # Header — candidate name
-    pdf.set_font("arial", "B", 18)
+    pdf.set_font(font, "B", 18)
     pdf.cell(0, 10, profile.get("name", ""), new_x="LMARGIN", new_y="NEXT")
 
     # Contact line
-    pdf.set_font("arial", "", 9)
+    pdf.set_font(font, "", 9)
     pdf.set_text_color(100, 100, 100)
     contact_parts = [
         profile.get("email", ""),
@@ -828,16 +905,16 @@ def _generate_pdf(cover_letter: str, job: dict, profile: dict, base_name: str):
     # Date and target
     from datetime import datetime
     pdf.set_text_color(100, 100, 100)
-    pdf.set_font("arial", "", 10)
+    pdf.set_font(font, "", 10)
     pdf.cell(0, 5, datetime.now().strftime("%B %d, %Y"), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
-    pdf.set_font("arial", "B", 10)
+    pdf.set_font(font, "B", 10)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 5, f"{job.get('title', '')} at {job.get('company', '')}", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(6)
 
     # Cover letter body
-    pdf.set_font("arial", "", 11)
+    pdf.set_font(font, "", 11)
     pdf.set_text_color(30, 30, 30)
     for paragraph in cover_letter.split("\n\n"):
         paragraph = paragraph.strip()
@@ -847,9 +924,9 @@ def _generate_pdf(cover_letter: str, job: dict, profile: dict, base_name: str):
 
     # Sign off
     pdf.ln(4)
-    pdf.set_font("arial", "", 11)
+    pdf.set_font(font, "", 11)
     pdf.cell(0, 6, "Best regards,", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("arial", "B", 11)
+    pdf.set_font(font, "B", 11)
     pdf.cell(0, 6, profile.get("name", ""), new_x="LMARGIN", new_y="NEXT")
 
     buf = io.BytesIO()

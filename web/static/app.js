@@ -425,11 +425,15 @@ async function generateSelected() {
 // Resume Generation
 // ---------------------------------------------------------------------------
 
+let lastResumeGeneratedIds = [];
+
 async function generateResumes() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
 
     showConfirm(`Generate tailored resumes for ${ids.length} job(s)?`, async () => {
+        lastResumeGeneratedIds = [...ids];
+
         try {
             const resp = await fetch('/api/generate-resumes', {
                 method: 'POST',
@@ -463,7 +467,7 @@ async function generateResumes() {
                         document.getElementById('btn-generate-resumes').disabled = false;
                         loadJobs(currentTab);
                         loadStats();
-                        showToast(data.message, 'success');
+                        showResumeResults(lastResumeGeneratedIds);
                     }, 1500);
                 }
             };
@@ -482,7 +486,116 @@ async function generateResumes() {
 }
 
 // ---------------------------------------------------------------------------
-// Generation Results Modal
+// Resume Results Modal
+// ---------------------------------------------------------------------------
+
+async function showResumeResults(jobIds) {
+    const body = document.getElementById('resume-results-body');
+    body.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading results...</div>';
+
+    const modal = new bootstrap.Modal(document.getElementById('resumeResultsModal'));
+    modal.show();
+
+    // Fetch each job's data and check if resume PDF exists
+    const results = [];
+    for (const id of jobIds) {
+        try {
+            const resp = await fetch(`/api/job/${id}`);
+            if (resp.ok) {
+                const job = await resp.json();
+                // Check if resume file exists by trying a HEAD request
+                const resumeResp = await fetch(`/api/job/${id}/resume/download`, {method: 'HEAD'});
+                job._hasResume = resumeResp.ok;
+                results.push(job);
+            }
+        } catch (e) { /* skip */ }
+    }
+
+    const withResume = results.filter(j => j._hasResume);
+    const withoutResume = results.filter(j => !j._hasResume);
+
+    let html = `<p class="text-muted small mb-3">${withResume.length} of ${results.length} resume(s) generated successfully.</p>`;
+
+    if (withResume.length === 0) {
+        html += '<div class="alert alert-warning">No resumes were generated. Check the logs for errors.</div>';
+        body.innerHTML = html;
+        return;
+    }
+
+    withResume.forEach(job => {
+        html += `
+            <div class="border rounded mb-3 resume-result-card" data-job-id="${job.id}">
+                <div class="d-flex justify-content-between align-items-center p-3 bg-light" style="border-radius: 8px 8px 0 0;">
+                    <div>
+                        <strong>${escapeHtml(job.title)}</strong>
+                        <span class="text-muted"> at ${escapeHtml(job.company)}</span>
+                        <span class="badge bg-success-subtle text-success ms-2">Score: ${job.score ?? '--'}</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="/api/job/${job.id}/resume/download" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye me-1"></i>View PDF
+                        </a>
+                        <a href="/api/job/${job.id}/resume/download" download class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-download me-1"></i>Download
+                        </a>
+                    </div>
+                </div>
+            </div>`;
+    });
+
+    if (withoutResume.length > 0) {
+        html += `<div class="mt-3"><p class="text-muted small mb-2">Failed to generate (${withoutResume.length}):</p>`;
+        withoutResume.forEach(job => {
+            html += `<div class="border rounded p-2 mb-1 d-flex align-items-center">
+                <i class="bi bi-exclamation-circle text-danger me-2"></i>
+                <span class="small">${escapeHtml(job.title)} at ${escapeHtml(job.company)}</span>
+            </div>`;
+        });
+        html += '</div>';
+    }
+
+    body.innerHTML = html;
+}
+
+async function downloadAllResumes() {
+    const cards = document.querySelectorAll('.resume-result-card');
+    const jobIds = [];
+    cards.forEach(card => {
+        if (card.dataset.jobId) jobIds.push(card.dataset.jobId);
+    });
+
+    if (jobIds.length === 0) return;
+
+    try {
+        const resp = await fetch('/api/resumes/download-all', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({job_ids: jobIds})
+        });
+
+        if (!resp.ok) {
+            showToast('Failed to generate ZIP', 'error');
+            return;
+        }
+
+        const blob = await resp.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const disposition = resp.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="?(.+?)"?$/);
+        a.download = match ? match[1] : `Tailored_Resumes_${jobIds.length}_jobs.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        showToast('Download failed: ' + err.message, 'error');
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cover Letter Generation Results Modal
 // ---------------------------------------------------------------------------
 
 async function showGenerationResults(jobIds) {
