@@ -51,6 +51,33 @@ def _title_is_relevant(title: str) -> bool:
     return any(kw in title_lower for kw in _TITLE_KEYWORDS)
 
 
+# Non-US countries/cities to filter out when user wants US-only jobs
+_NON_US_INDICATORS = {
+    "canada", "toronto", "vancouver", "montreal", "ontario", "british columbia",
+    "ireland", "dublin", "united kingdom", "london", "uk", "england",
+    "germany", "berlin", "munich", "india", "bangalore", "hyderabad", "mumbai",
+    "pune", "chennai", "gurgaon", "noida", "delhi",
+    "singapore", "japan", "tokyo", "australia", "sydney", "melbourne",
+    "france", "paris", "netherlands", "amsterdam", "brazil", "sao paulo",
+    "mexico", "israel", "tel aviv", "sweden", "stockholm",
+    "poland", "warsaw", "spain", "madrid", "barcelona",
+    "china", "beijing", "shanghai", "korea", "seoul",
+}
+
+
+def _is_us_location(location: str | None) -> bool:
+    """Check if a job location appears to be in the US (or is empty/remote)."""
+    if not location:
+        return True  # No location = keep it
+    loc_lower = location.lower()
+    if "remote" in loc_lower:
+        return True
+    for indicator in _NON_US_INDICATORS:
+        if indicator in loc_lower:
+            return False
+    return True  # If no non-US match found, assume US
+
+
 def normalize_and_insert(raw_jobs: list[dict]) -> dict:
     """
     Normalize a list of raw job dicts and insert into jobs.db.
@@ -67,7 +94,7 @@ def normalize_and_insert(raw_jobs: list[dict]) -> dict:
     """
     init_db()
 
-    stats = {"total": len(raw_jobs), "new": 0, "duplicates": 0, "invalid": 0, "title_filtered": 0}
+    stats = {"total": len(raw_jobs), "new": 0, "duplicates": 0, "invalid": 0, "title_filtered": 0, "location_filtered": 0}
 
     # Load all existing URLs in one query for O(1) dedup lookups
     existing_urls = get_existing_urls()
@@ -88,6 +115,11 @@ def normalize_and_insert(raw_jobs: list[dict]) -> dict:
         # Title pre-filter: drop non-engineering roles early
         if not _title_is_relevant(title):
             stats["title_filtered"] += 1
+            continue
+
+        # Location filter: drop non-US jobs
+        if not _is_us_location(raw.get("location")):
+            stats["location_filtered"] += 1
             continue
 
         # Batch dedup: check against in-memory set instead of per-job DB query

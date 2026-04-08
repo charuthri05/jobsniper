@@ -84,68 +84,108 @@ def normalize_jobspy_results(df: pd.DataFrame) -> list[dict]:
     return jobs
 
 
-def scrape_major_boards(preferences: dict) -> list[dict]:
-    """
-    Scrape LinkedIn, Indeed, Glassdoor, ZipRecruiter, Google via JobSpy.
-    Returns list of normalized job dicts.
-    """
+def _run_single_search(sites: list, search_term: str, location: str,
+                        country_indeed: str, results_wanted: int = 100) -> pd.DataFrame | None:
+    """Run a single JobSpy search. Returns DataFrame or None."""
     from jobspy import scrape_jobs
-
-    search_term = " OR ".join(preferences.get("target_roles", ["Software Engineer"]))
-
-    # Build location string
-    locations = preferences.get("locations", [])
-    location_str = "United States"
-    if locations:
-        # Filter out 'Remote' for the location search param
-        non_remote = [loc for loc in locations if loc.lower() != "remote"]
-        if non_remote:
-            location_str = non_remote[0]  # JobSpy works best with a single location
-
-    # Map location to Indeed country code
-    _indeed_country_map = {
-        "united states": "USA", "usa": "USA", "us": "USA",
-        "canada": "Canada", "united kingdom": "UK", "uk": "UK",
-        "germany": "Germany", "india": "India", "australia": "Australia",
-        "france": "France", "netherlands": "Netherlands", "singapore": "Singapore",
-        "japan": "Japan", "brazil": "Brazil", "mexico": "Mexico",
-        "ireland": "Ireland", "israel": "Israel", "sweden": "Sweden",
-    }
-    country_indeed = "USA"
-    if locations:
-        first_loc = locations[0].strip().lower()
-        country_indeed = _indeed_country_map.get(first_loc, "USA")
-
-    sites = ["indeed", "glassdoor", "zip_recruiter", "google"]
-    # LinkedIn requires the li_at cookie which may not be set
-    import os
-    if os.getenv("LINKEDIN_SESSION_COOKIE"):
-        sites.insert(0, "linkedin")
-
-    print(f"  Searching: '{search_term}'")
-    print(f"  Sites: {', '.join(sites)}")
-    print(f"  Location: {location_str}")
-
     try:
-        results = scrape_jobs(
+        return scrape_jobs(
             site_name=sites,
             search_term=search_term,
-            location=location_str,
-            results_wanted=50,
+            location=location,
+            results_wanted=results_wanted,
             hours_old=24,
             linkedin_fetch_description=True,
             country_indeed=country_indeed,
         )
-
-        if results is None or results.empty:
-            print("  No results returned from JobSpy.")
-            return []
-
-        print(f"  Raw results from JobSpy: {len(results)} rows")
-        jobs = normalize_jobspy_results(results)
-        print(f"  Normalized: {len(jobs)} jobs")
-        return jobs
-
     except Exception as e:
-        print(f"  [JobSpy] Error during scrape: {e}")
+        print(f"    [JobSpy] Error for '{search_term}' in '{location}': {e}")
+        return None
+
+
+def scrape_major_boards(preferences: dict) -> list[dict]:
+    """
+    Scrape LinkedIn, Indeed, Glassdoor, ZipRecruiter, Google via JobSpy.
+    Runs multiple searches in parallel for broader coverage.
+    Returns list of normalized job dicts.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import os
+
+    target_roles = preferences.get("target_roles", ["Software Engineer"])
+
+    sites = ["indeed", "glassdoor", "zip_recruiter", "google"]
+    if os.getenv("LINKEDIN_SESSION_COOKIE"):
+        sites.insert(0, "linkedin")
+
+    # Build search queries — split roles into smaller groups for better results
+    # LinkedIn/Indeed return more relevant results with specific queries
+    search_queries = []
+    for role in target_roles:
+        search_queries.append(role)
+
+    # Deduplicate
+    search_queries = list(dict.fromkeys(search_queries))
+
+    # Locations to search — if empty, use major US tech hubs for better coverage
+    locations = preferences.get("locations", [])
+    if not locations:
+        search_locations = [
+            "San Francisco, CA",
+            "New York, NY",
+            "Seattle, WA",
+            "Austin, TX",
+            "Remote",
+        ]
+    else:
+        search_locations = locations
+
+    country_indeed = "USA"
+
+    print(f"  Sites: {', '.join(sites)}")
+    print(f"  Roles: {len(search_queries)} queries")
+    print(f"  Locations: {', '.join(search_locations)}")
+
+    # Run searches in parallel — each role x location combo
+    all_dfs = []
+    tasks = []
+
+    # Build task list: top 3 roles x all locations (cap total searches to avoid slowness)
+    top_roles = search_queries[:3]  # Most important roles
+    for role in top_roles:
+        for loc in search_locations:
+            tasks.append((role, loc))
+
+    # Cap at 10 parallel searches
+    tasks = tasks[:10]
+    print(f"  Running {len(tasks)} parallel searches...")
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {
+            executor.submit(_run_single_search, sites, role, loc, country_indeed, 50): (role, loc)
+            for role, loc in tasks
+        }
+
+        for future in as_completed(futures):
+            role, loc = futures[future]
+            df = future.result()
+            if df is not None and not df.empty:
+                all_dfs.append(df)
+                print(f"    '{role}' in '{loc}': {len(df)} results")
+
+    if not all_dfs:
+        print("  No results returned from JobSpy.")
         return []
+
+    # Combine all results and deduplicate by URL
+    combined = pd.concat(all_dfs, ignore_index=True)
+
+    # Deduplicate by job_url
+    url_col = "job_url" if "job_url" in combined.columns else "link"
+    if url_col in combined.columns:
+        combined = combined.drop_duplicates(subset=[url_col], keep="first")
+
+    print(f"  Raw results combined: {len(combined)} rows (deduplicated)")
+    jobs = normalize_jobspy_results(combined)
+    print(f"  Normalized: {len(jobs)} jobs")
+    return jobs
