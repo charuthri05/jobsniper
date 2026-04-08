@@ -396,7 +396,6 @@ function updateSelectionUI() {
     document.getElementById('btn-generate').disabled = count === 0;
     document.getElementById('btn-generate-resumes').disabled = count === 0;
     document.getElementById('btn-autofill').disabled = count === 0;
-    document.getElementById('btn-submit').disabled = count === 0;
     document.getElementById('btn-skip').disabled = count === 0;
 
     // Update master checkbox
