@@ -109,6 +109,32 @@ def api_profile_full():
     })
 
 
+@app.route("/api/resume/upload", methods=["POST"])
+def api_resume_upload():
+    """Upload a resume PDF, extract text, and return it."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    if not file.filename.lower().endswith(".pdf"):
+        return jsonify({"error": "Only PDF files are supported"}), 400
+
+    import tempfile
+    from utils.resume_parser import parse_resume_pdf
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        file.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        text = parse_resume_pdf(tmp_path)
+        return jsonify({"text": text, "chars": len(text)})
+    except (FileNotFoundError, ValueError) as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        os.unlink(tmp_path)
+
+
 @app.route("/api/profile/full", methods=["POST"])
 def api_save_profile_full():
     """Save candidate profile and preferences from the setup form."""
@@ -400,14 +426,13 @@ _generation_progress = {"current": 0, "total": 0, "status": "idle", "message": "
 
 @app.route("/api/generate", methods=["POST"])
 def api_generate():
-    """Generate cover letters for selected job IDs. Runs in background thread."""
+    """Generate cover letters + bullets for selected job IDs. Runs in background thread."""
     data = request.get_json()
     job_ids = data.get("job_ids", [])
 
     if not job_ids:
         return jsonify({"error": "No jobs selected"}), 400
 
-    # Don't start if already running
     if _generation_progress["status"] == "running":
         return jsonify({"error": "Generation already in progress"}), 409
 
@@ -418,7 +443,6 @@ def api_generate():
 
     def run_generation():
         from pipeline.generator import generate_cover_letter, generate_resume_bullets
-        from pipeline.resume_generator import generate_tailored_resume
         profile = load_profile()
         generated = 0
         errors = 0
@@ -429,30 +453,12 @@ def api_generate():
                 _generation_progress["current"] = i + 1
                 continue
 
-            _generation_progress["message"] = f"{job['title']} at {job['company']}"
+            _generation_progress["message"] = f"Cover letter: {job['title']} at {job['company']}"
 
             try:
                 cl = generate_cover_letter(job, profile)
                 bullets = generate_resume_bullets(job, profile)
-
-                # Generate tailored resume PDF
-                resume_path = None
-                try:
-                    resume_path = generate_tailored_resume(job, profile)
-                except Exception:
-                    pass  # Non-fatal: cover letter + bullets still saved
-
-                # Merge resume_path into existing notes
-                existing_notes = {}
-                try:
-                    existing_notes = json.loads(job.get("notes") or "{}")
-                except (json.JSONDecodeError, TypeError):
-                    pass
-                if resume_path:
-                    existing_notes["resume_path"] = resume_path
-                notes_json = json.dumps(existing_notes)
-
-                update_job(job_id, cover_letter=cl, resume_bullets=json.dumps(bullets), notes=notes_json)
+                update_job(job_id, cover_letter=cl, resume_bullets=json.dumps(bullets))
                 generated += 1
             except Exception as e:
                 errors += 1
@@ -461,12 +467,88 @@ def api_generate():
             _generation_progress["current"] = i + 1
 
         _generation_progress["status"] = "done"
-        _generation_progress["message"] = f"Done: {generated} generated, {errors} errors"
+        _generation_progress["message"] = f"Done: {generated} cover letters, {errors} errors"
 
     thread = threading.Thread(target=run_generation, daemon=True)
     thread.start()
 
     return jsonify({"status": "started", "total": len(job_ids)})
+
+
+# Track resume generation progress
+_resume_progress = {"current": 0, "total": 0, "status": "idle", "message": ""}
+
+
+@app.route("/api/generate-resumes", methods=["POST"])
+def api_generate_resumes():
+    """Generate tailored resume PDFs for selected job IDs. Runs in background thread."""
+    data = request.get_json()
+    job_ids = data.get("job_ids", [])
+
+    if not job_ids:
+        return jsonify({"error": "No jobs selected"}), 400
+
+    if _resume_progress["status"] == "running":
+        return jsonify({"error": "Resume generation already in progress"}), 409
+
+    _resume_progress["current"] = 0
+    _resume_progress["total"] = len(job_ids)
+    _resume_progress["status"] = "running"
+    _resume_progress["message"] = "Starting..."
+
+    def run_resume_generation():
+        from pipeline.resume_generator import generate_tailored_resume
+        profile = load_profile()
+        generated = 0
+        errors = 0
+
+        for i, job_id in enumerate(job_ids):
+            job = get_job_by_id(job_id)
+            if not job:
+                _resume_progress["current"] = i + 1
+                continue
+
+            _resume_progress["message"] = f"Resume: {job['title']} at {job['company']}"
+
+            try:
+                resume_path = generate_tailored_resume(job, profile)
+
+                # Store path in notes
+                existing_notes = {}
+                try:
+                    existing_notes = json.loads(job.get("notes") or "{}")
+                except (json.JSONDecodeError, TypeError):
+                    pass
+                existing_notes["resume_path"] = resume_path
+                update_job(job_id, notes=json.dumps(existing_notes))
+                generated += 1
+            except Exception as e:
+                errors += 1
+                _resume_progress["message"] = f"Error: {e}"
+
+            _resume_progress["current"] = i + 1
+
+        _resume_progress["status"] = "done"
+        _resume_progress["message"] = f"Done: {generated} resumes, {errors} errors"
+
+    thread = threading.Thread(target=run_resume_generation, daemon=True)
+    thread.start()
+
+    return jsonify({"status": "started", "total": len(job_ids)})
+
+
+@app.route("/api/generate-resumes/progress")
+def api_resume_progress():
+    """SSE endpoint for resume generation progress."""
+    def stream():
+        import time
+        while True:
+            data = json.dumps(_resume_progress)
+            yield f"data: {data}\n\n"
+            if _resume_progress["status"] in ("done", "idle"):
+                break
+            time.sleep(0.5)
+    return Response(stream(), mimetype="text/event-stream")
 
 
 @app.route("/api/generate/progress")

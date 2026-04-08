@@ -101,6 +101,9 @@ function renderTable() {
         const clIcon = job.has_cover_letter
             ? '<i class="bi bi-check-circle-fill cl-yes"></i>'
             : '<i class="bi bi-dash-circle cl-no"></i>';
+        const cvIcon = job.has_resume
+            ? '<i class="bi bi-check-circle-fill cl-yes"></i>'
+            : '<i class="bi bi-dash-circle cl-no"></i>';
         const checked = selectedIds.has(job.id) ? 'checked' : '';
         const selectedClass = selectedIds.has(job.id) ? 'selected' : '';
         const location = job.location || '--';
@@ -119,6 +122,7 @@ function renderTable() {
                 <td onclick="openDetail('${job.id}')">${escapeHtml(job.company)}</td>
                 <td onclick="openDetail('${job.id}')" class="text-muted small">${escapeHtml(location)}</td>
                 <td>${clIcon}</td>
+                <td>${cvIcon}</td>
                 <td>
                     <a href="${job.url}" target="_blank" class="expand-icon" onclick="event.stopPropagation()" title="Open posting">
                         <i class="bi bi-box-arrow-up-right"></i>
@@ -196,6 +200,7 @@ function updateSelectionUI() {
 
     // Enable/disable action buttons
     document.getElementById('btn-generate').disabled = count === 0;
+    document.getElementById('btn-generate-resumes').disabled = count === 0;
     document.getElementById('btn-autofill').disabled = count === 0;
     document.getElementById('btn-submit').disabled = count === 0;
     document.getElementById('btn-skip').disabled = count === 0;
@@ -402,6 +407,66 @@ async function generateSelected() {
             };
         } catch (err) {
             showToast('Failed to start generation', 'error');
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Resume Generation
+// ---------------------------------------------------------------------------
+
+async function generateResumes() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    showConfirm(`Generate tailored resumes for ${ids.length} job(s)?`, async () => {
+        try {
+            const resp = await fetch('/api/generate-resumes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({job_ids: ids})
+            });
+
+            if (resp.status === 409) {
+                showToast('Resume generation already in progress', 'warning');
+                return;
+            }
+
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('btn-generate-resumes').disabled = true;
+
+            const evtSource = new EventSource('/api/generate-resumes/progress');
+            evtSource.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                const pct = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
+
+                document.getElementById('progress-bar').style.width = pct + '%';
+                document.getElementById('progress-count').textContent = `${data.current}/${data.total}`;
+                document.getElementById('progress-detail').textContent = data.message;
+                document.getElementById('progress-label').textContent =
+                    data.status === 'done' ? 'Complete' : 'Generating tailored resumes...';
+
+                if (data.status === 'done') {
+                    evtSource.close();
+                    setTimeout(() => {
+                        document.getElementById('progress-container').style.display = 'none';
+                        document.getElementById('btn-generate-resumes').disabled = false;
+                        loadJobs(currentTab);
+                        loadStats();
+                        showToast(data.message, 'success');
+                    }, 1500);
+                }
+            };
+
+            evtSource.onerror = () => {
+                evtSource.close();
+                document.getElementById('progress-container').style.display = 'none';
+                document.getElementById('btn-generate-resumes').disabled = false;
+                loadJobs(currentTab);
+                loadStats();
+            };
+        } catch (err) {
+            showToast('Failed to start resume generation', 'error');
         }
     });
 }

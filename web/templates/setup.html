@@ -159,10 +159,23 @@
 
         <!-- Raw Resume Text -->
         <div class="setup-section">
-            <h6><i class="bi bi-file-earmark-text me-2"></i>Raw Resume Text</h6>
-            <p class="text-muted small mb-2">Paste your full resume as plain text. This is used by the AI for scoring and generation.</p>
+            <h6><i class="bi bi-file-earmark-text me-2"></i>Resume</h6>
+
+            <!-- PDF Upload -->
+            <div class="mb-3 p-3 bg-light rounded border">
+                <label class="form-label small fw-medium">Upload Resume PDF</label>
+                <div class="d-flex align-items-center gap-3">
+                    <input type="file" class="form-control form-control-sm" id="f-resume-pdf" accept=".pdf"
+                           onchange="uploadResumePdf(this)" style="max-width: 350px;">
+                    <span id="pdf-upload-status" class="small text-muted"></span>
+                </div>
+                <div class="form-text">Upload a PDF and we'll extract the text automatically. This replaces the text below.</div>
+            </div>
+
+            <!-- Plain text fallback -->
+            <label class="form-label small">Resume Text <span class="text-muted">(auto-filled from PDF or paste manually)</span></label>
             <textarea class="form-control" id="f-resume-text" rows="8"
-                      placeholder="Paste your full resume text here..."></textarea>
+                      placeholder="Paste your full resume text here, or upload a PDF above..."></textarea>
         </div>
 
         <!-- Preferences -->
@@ -455,6 +468,40 @@ function escapeAttr(str) {
 // ---------------------------------------------------------------------------
 // Save
 // ---------------------------------------------------------------------------
+
+async function uploadResumePdf(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const status = document.getElementById('pdf-upload-status');
+    status.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Extracting text...';
+    status.className = 'small text-primary';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch('/api/resume/upload', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            status.textContent = data.error || 'Upload failed';
+            status.className = 'small text-danger';
+            return;
+        }
+
+        document.getElementById('f-resume-text').value = data.text;
+        status.textContent = `Extracted ${data.chars} characters from ${file.name}`;
+        status.className = 'small text-success';
+        showToast('Resume text extracted from PDF', 'success');
+    } catch (e) {
+        status.textContent = 'Upload failed: ' + e.message;
+        status.className = 'small text-danger';
+    }
+}
 
 async function saveSetup() {
     const btn = document.getElementById('btn-save');
