@@ -168,29 +168,55 @@ def fetch_lever_jobs(company_slug: str) -> list[dict]:
 # Batch fetch
 # ---------------------------------------------------------------------------
 
-def fetch_all_ats_jobs(preferences: dict) -> list[dict]:
-    """
-    Fetch jobs from all configured Greenhouse and Lever boards.
-    Returns a combined list of normalized job dicts.
-    """
-    all_jobs = []
+def _fetch_greenhouse_worker(board: str) -> tuple[str, list[dict]]:
+    """Worker function for parallel Greenhouse fetching."""
+    jobs = fetch_greenhouse_jobs(board)
+    return board, jobs
 
+
+def _fetch_lever_worker(slug: str) -> tuple[str, list[dict]]:
+    """Worker function for parallel Lever fetching."""
+    jobs = fetch_lever_jobs(slug)
+    return slug, jobs
+
+
+def fetch_all_ats_jobs(preferences: dict, max_workers: int = 10) -> list[dict]:
+    """
+    Fetch jobs from all configured Greenhouse and Lever boards in parallel.
+    Uses 10 concurrent workers by default — fast but stays under rate limits.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    all_jobs = []
     greenhouse_boards = preferences.get("greenhouse_boards", [])
     lever_boards = preferences.get("lever_boards", [])
 
-    print(f"  Fetching from {len(greenhouse_boards)} Greenhouse boards...")
-    for board in greenhouse_boards:
-        jobs = fetch_greenhouse_jobs(board)
-        all_jobs.extend(jobs)
-        print(f"    {board}: {len(jobs)} jobs")
-        time.sleep(0.6)  # Rate limit: ~100 req/min
+    # Parallel Greenhouse fetching
+    print(f"  Fetching from {len(greenhouse_boards)} Greenhouse boards ({max_workers} parallel)...")
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(_fetch_greenhouse_worker, board): board
+            for board in greenhouse_boards
+        }
+        for future in as_completed(futures):
+            board, jobs = future.result()
+            all_jobs.extend(jobs)
+            if jobs:
+                print(f"    {board}: {len(jobs)} jobs")
 
-    print(f"  Fetching from {len(lever_boards)} Lever boards...")
-    for slug in lever_boards:
-        jobs = fetch_lever_jobs(slug)
-        all_jobs.extend(jobs)
-        print(f"    {slug}: {len(jobs)} jobs")
-        time.sleep(0.3)
+    # Parallel Lever fetching
+    if lever_boards:
+        print(f"  Fetching from {len(lever_boards)} Lever boards...")
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_fetch_lever_worker, slug): slug
+                for slug in lever_boards
+            }
+            for future in as_completed(futures):
+                slug, jobs = future.result()
+                all_jobs.extend(jobs)
+                if jobs:
+                    print(f"    {slug}: {len(jobs)} jobs")
 
     print(f"  Total ATS jobs fetched: {len(all_jobs)}")
     return all_jobs
