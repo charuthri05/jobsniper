@@ -62,13 +62,19 @@ body {
     font-weight: 600;
 }
 
-/* Cover letter indicator */
-.cl-yes {
-    color: #198754;
-}
-
+/* Cover letter / resume download indicators */
 .cl-no {
     color: #adb5bd;
+}
+
+td a.text-success {
+    font-size: 1.1rem;
+    transition: transform 0.15s, color 0.15s;
+}
+
+td a.text-success:hover {
+    color: #0d6efd !important;
+    transform: scale(1.2);
 }
 
 /* Nav pills custom */

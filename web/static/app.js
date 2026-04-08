@@ -109,10 +109,10 @@ function renderTable() {
     tbody.innerHTML = jobs.map(job => {
         const scoreClass = job.score >= 80 ? 'score-high' : job.score >= 72 ? 'score-mid' : 'score-low';
         const clIcon = job.has_cover_letter
-            ? '<i class="bi bi-check-circle-fill cl-yes"></i>'
+            ? `<a href="/api/job/${job.id}/cover-letter/download?format=pdf" download onclick="event.stopPropagation()" title="Download cover letter PDF" class="text-success"><i class="bi bi-file-earmark-arrow-down-fill"></i></a>`
             : '<i class="bi bi-dash-circle cl-no"></i>';
         const cvIcon = job.has_resume
-            ? '<i class="bi bi-check-circle-fill cl-yes"></i>'
+            ? `<a href="/api/job/${job.id}/resume/download" download onclick="event.stopPropagation()" title="Download tailored resume" class="text-success"><i class="bi bi-file-earmark-arrow-down-fill"></i></a>`
             : '<i class="bi bi-dash-circle cl-no"></i>';
         const checked = selectedIds.has(job.id) ? 'checked' : '';
         const selectedClass = selectedIds.has(job.id) ? 'selected' : '';
