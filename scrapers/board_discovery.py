@@ -17,84 +17,219 @@ logger = logging.getLogger(__name__)
 # Large list of tech companies to check — YC top companies, unicorns,
 # well-known startups, FAANG, etc.
 TECH_COMPANIES = [
+    # ══════════════════════════════════════════════════════════════
     # FAANG / Big Tech
+    # ══════════════════════════════════════════════════════════════
     "google", "meta", "apple", "amazon", "microsoft", "netflix",
-    # Cloud / Infrastructure
+    "nvidia", "oracle", "ibm", "intel", "amd", "qualcomm",
+    "adobe", "vmware", "dell", "hp", "cisco", "broadcom",
+
+    # ══════════════════════════════════════════════════════════════
+    # Cloud / Infrastructure / DevOps
+    # ══════════════════════════════════════════════════════════════
     "snowflake", "databricks", "cloudflare", "datadog", "elastic",
     "hashicorp", "confluent", "mongodb", "cockroachlabs", "timescale",
     "planetscale", "neon", "supabase", "vercel", "netlify", "railway",
-    "render", "fly", "digitalocean",
-    # AI / ML
+    "render", "fly", "digitalocean", "linode", "vultr",
+    "pulumi", "env0", "spacelift", "terrateam",
+    "grafana", "chronosphere", "lightstep", "honeycomb",
+
+    # ══════════════════════════════════════════════════════════════
+    # AI / ML / LLM Companies
+    # ══════════════════════════════════════════════════════════════
     "openai", "anthropic", "cohere", "mistral", "huggingface",
     "stability", "midjourney", "jasper", "writer", "adept",
     "inflection", "characterai", "perplexity", "runway",
     "scale", "labelbox", "weights-and-biases", "wandb", "modal",
-    "anyscale", "ray", "deepmind", "nvidia",
+    "anyscale", "deepmind", "together", "togetherai",
+    "replicate", "baseten", "banana-dev", "cerebras",
+    "sambanova", "groq", "fireworks-ai", "fixie",
+    "langchain", "llamaindex", "pinecone", "weaviate", "chroma",
+    "unstructured", "humanloop", "promptlayer",
+    "descript", "elevenlab", "synthesia", "tavus",
+    "glean", "mem", "notion-ai", "codeium", "cursor",
+    "magic", "poolside", "augment", "sourcegraph",
+    "cognition", "devin", "factory", "codegen",
+    "harvey", "casetext", "relativity",
+    "hebbia", "vectara", "txtai",
+
+    # ══════════════════════════════════════════════════════════════
+    # YC Top Companies (W24, S24, W23, S23 batches)
+    # ══════════════════════════════════════════════════════════════
+    "posthog", "cal-com", "cal", "resend", "trigger-dev",
+    "inngest", "convoy", "novu", "tinybird", "clickhouse",
+    "turso", "drizzle", "encore", "zephyr", "stytch",
+    "clerk", "workos", "propelauth", "passage",
+    "infisical", "doppler", "bearer",
+    "mintlify", "readme", "bump-sh", "speakeasy-api",
+    "browserbase", "apify", "browserless", "playwright",
+    "latitude", "helicone", "braintrust", "arize",
+    "portkey", "orb", "metronome", "amberflo",
+    "superblocks", "retool", "airplane", "windmill",
+    "nango", "merge", "finch", "vessel",
+    "snaplet", "neosync", "gretel", "tonic",
+    "traceloop", "langtrace", "logfire",
+    "highlight-io", "komodor", "groundcover",
+
+    # ══════════════════════════════════════════════════════════════
+    # YC Unicorns & Notable Alumni
+    # ══════════════════════════════════════════════════════════════
+    "stripe", "airbnb", "instacart", "doordash", "coinbase",
+    "dropbox", "twitch", "reddit", "gitlab", "zapier",
+    "algolia", "segment", "brex", "ramp", "faire",
+    "deel", "rippling", "gusto", "lattice",
+    "fivetran", "airbyte", "dbt-labs", "prefect",
+    "mux", "loom", "sendbird", "stream",
+    "checkr", "plaid", "moderntreasury", "column",
+    "benchling", "recursion", "flatiron",
+    "gong", "outreach", "salesloft", "clari",
+    "webflow", "framer", "builder-io",
+    "vercel", "railway", "render",
+    "snyk", "vanta", "drata", "secureframe",
+    "tailscale", "ngrok", "teleport",
+    "pagerduty", "firehydrant", "rootly",
+    "launchdarkly", "split", "flagsmith",
+    "sentry", "logdna", "mezmo",
+    "liveblocks", "partykit", "convex",
+
+    # ══════════════════════════════════════════════════════════════
     # Fintech
+    # ══════════════════════════════════════════════════════════════
     "stripe", "plaid", "brex", "ramp", "mercury", "wise",
     "coinbase", "robinhood", "affirm", "chime", "sofi", "marqeta",
     "nerdwallet", "cashapp", "block", "adyen", "checkout",
     "carta", "capchase", "moderntreasury", "column", "unit",
-    # E-commerce / Marketplace
+    "lithic", "highnote", "synctera", "treasury-prime",
+    "alloy", "sardine", "unit21", "hummingbird",
+    "moov", "dwolla", "abound", "method-fi",
+    "teller", "akoya", "finicity",
+    "pinwheel", "argyle", "truework",
+    "melio", "routable", "rho", "navan",
+    "razorpay", "paytm", "phonepe",
+
+    # ══════════════════════════════════════════════════════════════
+    # E-commerce / Marketplace / Logistics
+    # ══════════════════════════════════════════════════════════════
     "shopify", "instacart", "doordash", "uber", "lyft",
-    "airbnb", "vrbo", "etsy", "poshmark", "mercari",
+    "airbnb", "etsy", "poshmark", "mercari",
     "faire", "goat", "stockx", "whatnot",
-    # Social / Consumer
+    "flexport", "project44", "shipbob", "shippo",
+    "bolt", "fast", "paddle", "chargebee", "recurly",
+
+    # ══════════════════════════════════════════════════════════════
+    # Social / Consumer / Media
+    # ══════════════════════════════════════════════════════════════
     "reddit", "discord", "snap", "pinterest", "spotify",
     "duolingo", "calm", "headspace", "strava", "peloton",
     "bumble", "hinge", "match",
-    # Developer Tools
-    "github", "gitlab", "atlassian", "jetbrains",
-    "postman", "insomnia", "figma", "canva", "miro",
+    "substack", "beehiiv", "ghost", "medium",
+    "clubhouse", "dispo", "poparazzi",
+
+    # ══════════════════════════════════════════════════════════════
+    # Developer Tools / Productivity
+    # ══════════════════════════════════════════════════════════════
+    "github", "gitlab", "atlassian",
+    "postman", "figma", "canva", "miro",
     "notion", "coda", "airtable", "asana", "linear",
-    "retool", "superblocks", "appsmith", "budibase",
-    "snyk", "sonarqube", "codecov", "launchdarkly",
-    "sentry", "logdna", "mezmo", "chronosphere",
+    "retool", "appsmith",
+    "snyk", "codecov", "launchdarkly",
+    "sentry", "logdna",
+    "replit", "codespaces", "gitpod", "coder",
+    "zed", "warp", "fig", "iterm",
+    "raycast", "alfred", "arc",
+
+    # ══════════════════════════════════════════════════════════════
     # Cybersecurity
+    # ══════════════════════════════════════════════════════════════
     "crowdstrike", "paloaltonetworks", "zscaler", "okta",
-    "1password", "bitwarden", "tailscale", "cloudflare",
-    "wiz", "orca-security", "lacework", "snyk",
+    "1password", "bitwarden", "tailscale",
+    "wiz", "orca-security", "lacework",
     "sentinelone", "tanium", "rapid7",
-    # SaaS / Enterprise
-    "salesforce", "hubspot", "twilio", "sendgrid",
-    "pagerduty", "opsgenie", "victorops",
-    "gusto", "rippling", "deel", "remote", "oyster",
-    "lattice", "cultureamp", "15five",
+    "snyk", "semgrep", "endor-labs",
+    "chainguard", "sigstore", "stackhawk",
+    "material-security", "abnormal-security", "sublime-security",
+    "vanta", "drata", "secureframe", "thoropass",
+
+    # ══════════════════════════════════════════════════════════════
+    # SaaS / Enterprise / HR / Sales
+    # ══════════════════════════════════════════════════════════════
+    "salesforce", "hubspot", "twilio",
+    "pagerduty", "gusto", "rippling", "deel", "remote", "oyster",
+    "lattice", "cultureamp", "15five", "leapsome",
     "gong", "chorus", "outreach", "salesloft",
-    "intercom", "drift", "zendesk", "freshworks",
+    "intercom", "drift", "zendesk", "freshworks", "front",
     "contentful", "sanity", "strapi", "prismic",
-    "amplitude", "mixpanel", "segment", "heap",
-    "dbt-labs", "fivetran", "airbyte", "prefect",
-    # Health Tech
+    "amplitude", "mixpanel", "heap", "fullstory", "logrocket",
+    "calendly", "chili-piper", "savvycal",
+    "loom", "grain", "fireflies",
+    "grammarly", "jasper", "writer",
+    "airtable", "clickup", "monday", "basecamp",
+    "figma", "pitch", "gamma",
+
+    # ══════════════════════════════════════════════════════════════
+    # Data / Analytics / Data Engineering
+    # ══════════════════════════════════════════════════════════════
+    "databricks", "snowflake", "dbt-labs", "fivetran",
+    "airbyte", "prefect", "dagster", "mage",
+    "hex", "mode", "sigma", "lightdash",
+    "census", "hightouch", "rudderstack",
+    "monte-carlo", "bigeye", "anomalo", "soda",
+    "atlan", "alation", "collibra",
+    "duckdb", "motherduck", "clickhouse", "tinybird",
+    "rockset", "imply", "startree",
+
+    # ══════════════════════════════════════════════════════════════
+    # Health Tech / Biotech
+    # ══════════════════════════════════════════════════════════════
     "veracyte", "tempus", "flatiron", "color",
-    "ro", "hims", "cerebral", "springhealth",
+    "ro", "hims", "cerebral", "springhealth", "talkiatry",
     "benchling", "recursion", "insitro",
-    # Autonomous / Robotics / Hardware
+    "devoted-health", "clover-health", "oscar",
+    "athenahealth", "veeva", "doximity",
+    "olive-ai", "viz-ai", "aidoc",
+
+    # ══════════════════════════════════════════════════════════════
+    # Autonomous / Robotics / Space / Hardware
+    # ══════════════════════════════════════════════════════════════
     "cruise", "aurora", "waymo", "zoox", "nuro",
     "anduril", "shield-ai", "skydio", "zipline",
     "relativity", "astranis", "spire",
-    # Real Estate / PropTech
+    "joby", "archer", "lilium",
+    "samsara", "viam", "covariant",
+
+    # ══════════════════════════════════════════════════════════════
+    # Real Estate / Climate / Energy
+    # ══════════════════════════════════════════════════════════════
     "opendoor", "zillow", "redfin", "compass",
-    "loft", "divvy", "bungalow",
+    "watershed", "watershedclimate", "pachama",
+    "palmetto", "arcadia", "gridx",
+
+    # ══════════════════════════════════════════════════════════════
     # Education
+    # ══════════════════════════════════════════════════════════════
     "coursera", "udemy", "masterclass",
     "brilliant", "kahoot", "quizlet",
+    "guild", "springboard", "codecademy",
+
+    # ══════════════════════════════════════════════════════════════
     # Gaming
+    # ══════════════════════════════════════════════════════════════
     "roblox", "epicgames", "unity", "riot",
-    # Other notable tech
+    "supercell", "scopely", "kabam",
+
+    # ══════════════════════════════════════════════════════════════
+    # Other Notable / Misc
+    # ══════════════════════════════════════════════════════════════
     "palantir", "bloomberg", "squarespace", "webflow",
-    "toast", "samsara", "procore", "servicetitan",
-    "grammarly", "calendly", "loom", "mux",
-    "drata", "vanta", "secureframe",
-    "navan", "tripactions", "hopper",
+    "toast", "procore", "servicetitan",
+    "calendly", "loom", "mux",
+    "navan", "hopper",
     "flexport", "convoyinc", "project44",
-    "plaid", "mx", "galileo-ft",
-    "watershed", "watershedclimate", "pachama",
-    "applied-intuition", "aurora-innovation",
-    # Additional YC companies
-    "algolia", "zapier", "gitlab", "razorpay",
-    "meesho", "cleartax", "cred", "zerodha",
-    "gojek", "grab", "sea",
+    "applied-intuition",
+    "ironclad", "icertis", "juro",
+    "productboard", "pendo", "gainsight",
+    "krisp", "otter-ai", "fathom",
+    "axiom", "baselime", "betterstack",
 ]
 
 # Common slug transformations to try
