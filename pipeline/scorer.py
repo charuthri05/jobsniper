@@ -18,9 +18,17 @@ SCORE_THRESHOLD = int(os.getenv("SCORE_THRESHOLD", "72"))
 MAX_WORKERS = int(os.getenv("SCORE_WORKERS", "20"))
 MAX_DESCRIPTION_CHARS = 3000
 
-# Seniority keywords that signal a role is too senior or too junior
-SENIOR_KEYWORDS = {"staff", "principal", "distinguished", "director", "vp", "head of", "chief"}
-JUNIOR_KEYWORDS = {"intern", "internship", "co-op", "coop", "apprentice"}
+# Roles that require 5+ YOE — always reject for 0-4 YOE candidates
+TOO_SENIOR_KEYWORDS = {
+    "staff", "principal", "distinguished", "director", "vp", "head of", "chief",
+    "lead engineer", "lead software", "lead developer", "lead backend", "lead frontend",
+    "engineering manager", "eng manager", "architect",
+    "senior staff", "staff swe", "tech lead",
+}
+# These are fine — we WANT these
+# "senior" alone is OK (Senior SWE is often 3-5 YOE)
+# "new grad", "junior", "entry" are all OK
+# "intern" is OK too — user said 0 to 4 YOE
 
 # Known staffing, consultancy, and fraud companies to auto-reject
 STAFFING_COMPANIES = {
@@ -82,25 +90,25 @@ def hard_filter(job: dict, profile: dict, prefs: dict) -> tuple[bool, str]:
     if job.get("status") != "new":
         return False, f"Job already has status '{job.get('status')}'"
 
-    # Too senior
-    for kw in SENIOR_KEYWORDS:
+    # Too senior — reject roles that clearly need 5+ YOE
+    for kw in TOO_SENIOR_KEYWORDS:
         if kw in title_lower:
-            allowed_seniority = prefs.get("seniority_levels", [])
-            if "staff" not in allowed_seniority and "principal" not in allowed_seniority:
-                return False, f"Title contains '{kw}' — too senior for target seniority"
+            return False, f"Title contains '{kw}' — too senior (targeting 0-4 YOE)"
 
-    # Too junior
-    for kw in JUNIOR_KEYWORDS:
-        if kw in title_lower:
-            allowed_seniority = prefs.get("seniority_levels", [])
-            if "intern" not in allowed_seniority:
-                return False, f"Title contains '{kw}' — too junior"
+    # Also reject if JD explicitly asks for too much experience
+    yoe_match = re.search(r'(\d+)\+?\s*(?:years|yrs|yr)\s*(?:of)?\s*(?:experience|exp)', description_lower)
+    if yoe_match:
+        years_required = int(yoe_match.group(1))
+        if years_required > 6:
+            return False, f"Requires {years_required}+ years experience — too senior"
 
     # Title relevance — skip jobs that clearly aren't software engineering
     target_keywords = {"software", "engineer", "developer", "swe", "backend",
                         "frontend", "full stack", "fullstack", "full-stack",
                         "web developer", "application developer", "platform engineer",
-                        "devops", "sre", "site reliability"}
+                        "devops", "sre", "site reliability",
+                        "systems engineer", "infrastructure engineer",
+                        "data engineer", "ml engineer", "machine learning engineer"}
     title_has_match = any(kw in title_lower for kw in target_keywords)
     if not title_has_match:
         return False, f"Title '{job.get('title')}' doesn't match any target role keywords"

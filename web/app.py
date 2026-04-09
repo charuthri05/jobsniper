@@ -646,6 +646,89 @@ def api_scrape_progress():
     return Response(stream(), mimetype="text/event-stream")
 
 
+_discover_progress = {"status": "idle", "message": "", "results": None}
+
+
+@app.route("/api/discover-boards", methods=["POST"])
+def api_discover_boards():
+    """Discover new Greenhouse and Lever boards from a list of tech companies."""
+    if _discover_progress["status"] == "running":
+        return jsonify({"error": "Discovery already in progress"}), 409
+
+    _discover_progress["status"] = "running"
+    _discover_progress["message"] = "Starting discovery..."
+    _discover_progress["results"] = None
+
+    def run_discovery():
+        from scrapers.board_discovery import discover_boards_sync
+        prefs = load_preferences()
+
+        def progress_cb(msg):
+            _discover_progress["message"] = msg
+
+        try:
+            results = discover_boards_sync(
+                existing_greenhouse=prefs.get("greenhouse_boards", []),
+                existing_lever=prefs.get("lever_boards", []),
+                progress_callback=progress_cb,
+            )
+            _discover_progress["results"] = results
+            _discover_progress["message"] = (
+                f"Found {len(results['new_greenhouse'])} new Greenhouse "
+                f"and {len(results['new_lever'])} new Lever boards"
+            )
+        except Exception as e:
+            _discover_progress["message"] = f"Error: {e}"
+
+        _discover_progress["status"] = "done"
+
+    thread = threading.Thread(target=run_discovery, daemon=True)
+    thread.start()
+    return jsonify({"status": "started"})
+
+
+@app.route("/api/discover-boards/progress")
+def api_discover_progress():
+    """SSE endpoint for board discovery progress."""
+    def stream():
+        import time
+        while True:
+            data = json.dumps(_discover_progress)
+            yield f"data: {data}\n\n"
+            if _discover_progress["status"] in ("done", "idle"):
+                break
+            time.sleep(1)
+    return Response(stream(), mimetype="text/event-stream")
+
+
+@app.route("/api/discover-boards/apply", methods=["POST"])
+def api_apply_discovered_boards():
+    """Add discovered boards to preferences."""
+    data = request.get_json()
+    greenhouse_slugs = data.get("greenhouse", [])
+    lever_slugs = data.get("lever", [])
+
+    prefs = load_preferences()
+
+    existing_gh = set(prefs.get("greenhouse_boards", []))
+    existing_lv = set(prefs.get("lever_boards", []))
+
+    added_gh = [s for s in greenhouse_slugs if s not in existing_gh]
+    added_lv = [s for s in lever_slugs if s not in existing_lv]
+
+    prefs["greenhouse_boards"] = list(existing_gh | set(added_gh))
+    prefs["lever_boards"] = list(existing_lv | set(added_lv))
+    save_preferences(prefs)
+
+    return jsonify({
+        "status": "ok",
+        "added_greenhouse": len(added_gh),
+        "added_lever": len(added_lv),
+        "total_greenhouse": len(prefs["greenhouse_boards"]),
+        "total_lever": len(prefs["lever_boards"]),
+    })
+
+
 @app.route("/api/jobs/add-by-url", methods=["POST"])
 def api_add_job_by_url():
     """Fetch a job posting from any URL, extract details, add to DB."""

@@ -374,14 +374,23 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label small mb-0 fw-medium">Job Boards</label>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="discoverBoards()">
+                            <i class="bi bi-search me-1"></i>Auto-Discover New Boards
+                        </button>
+                    </div>
+                    <div id="discover-status" class="mb-2"></div>
+                </div>
                 <div class="col-md-6">
-                    <label class="form-label small">Greenhouse Boards</label>
+                    <label class="form-label small">Greenhouse Boards (<span id="gh-count">0</span>)</label>
                     <textarea class="form-control tag-input" id="f-greenhouse" rows="3"
                               placeholder="stripe, anthropic, databricks, airbnb, figma"></textarea>
                     <div class="form-text">Comma-separated board tokens</div>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small">Lever Boards</label>
+                    <label class="form-label small">Lever Boards (<span id="lv-count">0</span>)</label>
                     <textarea class="form-control tag-input" id="f-lever" rows="3"
                               placeholder="netflix, lyft, discord"></textarea>
                     <div class="form-text">Comma-separated company slugs</div>
@@ -684,6 +693,7 @@ function fillForm(p, prefs) {
     document.getElementById('f-remote-only').checked = prefs.remote_only || false;
     document.getElementById('f-greenhouse').value = arrayToCsv(prefs.greenhouse_boards);
     document.getElementById('f-lever').value = arrayToCsv(prefs.lever_boards);
+    updateBoardCounts();
 
     const seniority = prefs.seniority_levels || [];
     document.getElementById('f-seniority-entry').checked = seniority.includes('entry-level');
@@ -994,6 +1004,100 @@ async function extractFileToTextarea(input, textareaId, statusId) {
         statusEl.textContent = 'Upload failed';
         statusEl.className = 'small text-danger align-self-center';
     }
+}
+
+// ---------------------------------------------------------------------------
+// Board Discovery
+// ---------------------------------------------------------------------------
+
+async function discoverBoards() {
+    const statusEl = document.getElementById('discover-status');
+    statusEl.innerHTML = '<div class="alert alert-info py-2 small"><span class="spinner-border spinner-border-sm me-1"></span>Scanning 200+ tech companies for Greenhouse and Lever boards... this takes ~1 minute</div>';
+
+    try {
+        const resp = await fetch('/api/discover-boards', {method: 'POST'});
+        if (resp.status === 409) {
+            statusEl.innerHTML = '<div class="alert alert-warning py-2 small">Discovery already running</div>';
+            return;
+        }
+
+        // Poll progress via SSE
+        const evtSource = new EventSource('/api/discover-boards/progress');
+        evtSource.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            statusEl.innerHTML = `<div class="alert alert-info py-2 small"><span class="spinner-border spinner-border-sm me-1"></span>${data.message}</div>`;
+
+            if (data.status === 'done') {
+                evtSource.close();
+                const results = data.results;
+                if (!results || (results.new_greenhouse.length === 0 && results.new_lever.length === 0)) {
+                    statusEl.innerHTML = '<div class="alert alert-secondary py-2 small">No new boards found — you already have good coverage!</div>';
+                    return;
+                }
+
+                // Show results with "Add All" button
+                let html = `<div class="alert alert-success py-2 small">
+                    Found <strong>${results.new_greenhouse.length}</strong> new Greenhouse and
+                    <strong>${results.new_lever.length}</strong> new Lever boards!
+                    <button class="btn btn-sm btn-success ms-2" onclick="applyDiscoveredBoards()">
+                        <i class="bi bi-plus-lg me-1"></i>Add All to Preferences
+                    </button>
+                </div>`;
+
+                // Store results for apply
+                window._discoveredBoards = results;
+                statusEl.innerHTML = html;
+            }
+        };
+
+        evtSource.onerror = () => {
+            evtSource.close();
+            statusEl.innerHTML = '<div class="alert alert-danger py-2 small">Discovery failed</div>';
+        };
+    } catch(e) {
+        statusEl.innerHTML = `<div class="alert alert-danger py-2 small">Error: ${e.message}</div>`;
+    }
+}
+
+async function applyDiscoveredBoards() {
+    const results = window._discoveredBoards;
+    if (!results) return;
+
+    const ghSlugs = results.new_greenhouse.map(b => b.slug);
+    const lvSlugs = results.new_lever.map(b => b.slug);
+
+    try {
+        const resp = await fetch('/api/discover-boards/apply', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({greenhouse: ghSlugs, lever: lvSlugs})
+        });
+        const data = await resp.json();
+
+        // Update the textareas
+        const ghField = document.getElementById('f-greenhouse');
+        const lvField = document.getElementById('f-lever');
+        const currentGh = csvToArray(ghField.value);
+        const currentLv = csvToArray(lvField.value);
+        ghField.value = arrayToCsv([...new Set([...currentGh, ...ghSlugs])]);
+        lvField.value = arrayToCsv([...new Set([...currentLv, ...lvSlugs])]);
+        updateBoardCounts();
+
+        document.getElementById('discover-status').innerHTML =
+            `<div class="alert alert-success py-2 small">
+                Added ${data.added_greenhouse} Greenhouse + ${data.added_lever} Lever boards.
+                Total: ${data.total_greenhouse} Greenhouse, ${data.total_lever} Lever
+            </div>`;
+    } catch(e) {
+        showToast('Failed to apply boards', 'error');
+    }
+}
+
+function updateBoardCounts() {
+    const gh = csvToArray(document.getElementById('f-greenhouse').value);
+    const lv = csvToArray(document.getElementById('f-lever').value);
+    document.getElementById('gh-count').textContent = gh.length;
+    document.getElementById('lv-count').textContent = lv.length;
 }
 
 async function uploadBaseResume(input) {
