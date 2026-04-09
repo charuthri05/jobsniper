@@ -722,10 +722,23 @@ function startResumePolling() {
             const statuses = await resp.json();
 
             let changed = false;
-            for (const [jobId, info] of Object.entries(statuses)) {
-                if (!_resumePollingIds.has(jobId)) continue;
+            for (const jobId of [..._resumePollingIds]) {
+                const info = statuses[jobId];
 
-                if (info.status === 'done') {
+                if (!info) {
+                    // Server lost track — check if PDF exists
+                    try {
+                        const head = await fetch(`/api/job/${jobId}/resume/download`, {method: 'HEAD'});
+                        _resumePollingIds.delete(jobId);
+                        _generatingResumes.delete(jobId);
+                        if (!head.ok) _failedResumes.add(jobId);
+                        changed = true;
+                    } catch(e) {
+                        _resumePollingIds.delete(jobId);
+                        _generatingResumes.delete(jobId);
+                        changed = true;
+                    }
+                } else if (info.status === 'done') {
                     _resumePollingIds.delete(jobId);
                     _generatingResumes.delete(jobId);
                     changed = true;

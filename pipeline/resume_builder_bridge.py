@@ -10,6 +10,7 @@ is completely untouched.
 import json
 import logging
 import shutil
+import threading
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -21,8 +22,9 @@ RESUMES_DIR = PROJECT_ROOT / "data" / "resumes"
 
 def _write_jd_file(job: dict) -> Path:
     """Write a job description as a markdown file with YAML frontmatter
-    in the format the resume builder expects."""
-    jd_path = PROJECT_ROOT / "data" / "job_description_temp.md"
+    in the format the resume builder expects. Uses job ID for unique filename
+    so parallel jobs don't overwrite each other."""
+    jd_path = PROJECT_ROOT / "data" / f"jd_{job.get('id', 'temp')}.md"
 
     company = job.get("company", "Unknown")
     title = job.get("title", "Unknown")
@@ -188,9 +190,10 @@ def generate_resume(job: dict, progress_callback=None, skip_review: bool = False
     jd_path = _write_jd_file(job)
     update(f"JD written: {job.get('title')} at {job.get('company')}")
 
-    # Update protected content from profile
+    # Update protected content from profile (thread-safe, idempotent)
     try:
-        _update_protected_content()
+        with threading.Lock():
+            _update_protected_content()
     except Exception as e:
         logger.warning(f"Could not update protected content: {e}")
 
@@ -283,5 +286,11 @@ def generate_resume(job: dict, progress_callback=None, skip_review: bool = False
         result["error"] = f"Pipeline error: {e}"
         logger.exception("Resume builder pipeline failed")
         return result
+    finally:
+        # Clean up per-job JD file
+        try:
+            jd_path.unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
