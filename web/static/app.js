@@ -8,6 +8,12 @@ let sortAsc = false;
 let currentDetailJob = null;
 let resumeMode = 'fast'; // 'fast' or 'thorough'
 
+// Track jobs currently generating (resume or cover letter)
+let _generatingResumes = new Set();  // job IDs with resume in progress
+let _generatingCLs = new Set();      // job IDs with cover letter in progress
+let _failedResumes = new Set();      // job IDs where resume failed
+let _failedCLs = new Set();          // job IDs where cover letter failed
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
@@ -287,19 +293,44 @@ function renderTable() {
 
     tbody.innerHTML = jobs.map(job => {
         const scoreClass = job.score >= 80 ? 'score-high' : job.score >= 72 ? 'score-mid' : 'score-low';
-        const clIcon = job.has_cover_letter
-            ? `<a href="/api/job/${job.id}/cover-letter/download?format=pdf" download onclick="event.stopPropagation()" title="Download cover letter PDF" class="text-success"><i class="bi bi-file-earmark-arrow-down-fill"></i></a>`
-            : '<i class="bi bi-dash-circle cl-no"></i>';
-        const cvIcon = job.has_resume
-            ? `<a href="/api/job/${job.id}/resume/download" download onclick="event.stopPropagation()" title="Download tailored resume" class="text-success"><i class="bi bi-file-earmark-arrow-down-fill"></i></a>`
-            : '<i class="bi bi-dash-circle cl-no"></i>';
+
+        // Cover letter column — generating / failed / ready / empty
+        let clIcon;
+        if (_generatingCLs.has(job.id)) {
+            clIcon = '<span class="gen-spinner" title="Generating cover letter..."><span class="spinner-border spinner-border-sm text-primary"></span></span>';
+        } else if (_failedCLs.has(job.id)) {
+            clIcon = '<i class="bi bi-exclamation-circle-fill text-danger" title="Generation failed"></i>';
+        } else if (job.has_cover_letter) {
+            clIcon = `<a href="/api/job/${job.id}/cover-letter/download?format=pdf" download onclick="event.stopPropagation()" title="Download cover letter" class="dl-ready"><i class="bi bi-file-earmark-arrow-down-fill"></i></a>`;
+        } else {
+            clIcon = '<i class="bi bi-dash cl-empty"></i>';
+        }
+
+        // Resume column — generating / failed / ready / empty
+        let cvIcon;
+        if (_generatingResumes.has(job.id)) {
+            cvIcon = '<span class="gen-spinner" title="Generating resume..."><span class="spinner-border spinner-border-sm text-info"></span></span>';
+        } else if (_failedResumes.has(job.id)) {
+            cvIcon = '<i class="bi bi-exclamation-circle-fill text-danger" title="Generation failed"></i>';
+        } else if (job.has_resume) {
+            cvIcon = `<a href="/api/job/${job.id}/resume/download" download onclick="event.stopPropagation()" title="Download resume" class="dl-ready"><i class="bi bi-file-earmark-arrow-down-fill"></i></a>`;
+        } else {
+            cvIcon = '<i class="bi bi-dash cl-empty"></i>';
+        }
+
+        // Row state class
+        const isGenerating = _generatingResumes.has(job.id) || _generatingCLs.has(job.id);
+        const hasFailed = _failedResumes.has(job.id) || _failedCLs.has(job.id);
         const checked = selectedIds.has(job.id) ? 'checked' : '';
-        const selectedClass = selectedIds.has(job.id) ? 'selected' : '';
+        let rowClass = selectedIds.has(job.id) ? 'selected' : '';
+        if (isGenerating) rowClass += ' row-generating';
+        if (hasFailed) rowClass += ' row-failed';
+
         const location = job.location || '--';
         const truncTitle = job.title.length > 50 ? job.title.substring(0, 47) + '...' : job.title;
 
         return `
-            <tr class="${selectedClass}" data-id="${job.id}">
+            <tr class="${rowClass}" data-id="${job.id}">
                 <td onclick="event.stopPropagation()">
                     <input type="checkbox" class="form-check-input row-check"
                            ${checked} onchange="toggleSelect('${job.id}', this)">
@@ -310,8 +341,8 @@ function renderTable() {
                 </td>
                 <td onclick="openDetail('${job.id}')">${escapeHtml(job.company)}</td>
                 <td onclick="openDetail('${job.id}')" class="text-muted small">${escapeHtml(location)}</td>
-                <td>${clIcon}</td>
-                <td>${cvIcon}</td>
+                <td class="text-center">${clIcon}</td>
+                <td class="text-center">${cvIcon}</td>
                 <td class="text-nowrap" onclick="event.stopPropagation()">
                     <a href="javascript:void(0)" onclick="quickMarkApplied('${job.id}')" class="row-action text-success" title="Mark as applied">
                         <i class="bi bi-check-circle"></i>
@@ -566,23 +597,29 @@ async function generateSelected() {
                 return;
             }
 
-            // Show progress and start SSE listener
-            document.getElementById('progress-container').style.display = 'block';
-            document.getElementById('btn-generate').disabled = true;
+            // Mark as generating, clear selection, re-render
+            ids.forEach(id => {
+                _generatingCLs.add(id);
+                _failedCLs.delete(id);
+            });
+            selectedIds.clear();
+            updateSelectionUI();
+            renderTable();
+            updateGeneratingBadge();
 
+            showToast(`${ids.length} cover letter(s) generating — spinners show progress`, 'success');
+
+            // SSE for progress
             const evtSource = new EventSource('/api/generate/progress');
             evtSource.onmessage = (e) => {
                 const data = JSON.parse(e.data);
                 const pct = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
 
-                document.getElementById('progress-bar').style.width = pct + '%';
-                document.getElementById('progress-count').textContent = `${data.current}/${data.total}`;
-                document.getElementById('progress-detail').textContent = data.message;
-                document.getElementById('progress-label').textContent =
-                    data.status === 'done' ? 'Complete' : 'Generating cover letters...';
-
                 if (data.status === 'done') {
                     evtSource.close();
+                    // Clear generating state for these jobs
+                    lastGeneratedIds.forEach(id => _generatingCLs.delete(id));
+                    updateGeneratingBadge();
                     setTimeout(() => {
                         document.getElementById('progress-container').style.display = 'none';
                         document.getElementById('btn-generate').disabled = false;
@@ -595,6 +632,8 @@ async function generateSelected() {
 
             evtSource.onerror = () => {
                 evtSource.close();
+                lastGeneratedIds.forEach(id => _generatingCLs.delete(id));
+                updateGeneratingBadge();
                 document.getElementById('progress-container').style.display = 'none';
                 document.getElementById('btn-generate').disabled = false;
                 loadJobs(currentTab);
@@ -630,7 +669,7 @@ async function generateResumes() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
 
-    const modeLabel = resumeMode === 'fast' ? 'Fast (Plan + Execute)' : 'Thorough (Plan + Review + Execute)';
+    const modeLabel = resumeMode === 'fast' ? 'Fast' : 'Thorough';
     showConfirm(`Generate ${modeLabel} resumes for ${ids.length} job(s)?`, async () => {
         try {
             const resp = await fetch('/api/generate-resumes', {
@@ -645,10 +684,18 @@ async function generateResumes() {
                 return;
             }
 
-            showToast(`${ids.length} resume(s) generating in background. Download icons will appear when ready.`, 'success');
+            // Mark as generating, clear selection, re-render
+            ids.forEach(id => {
+                _generatingResumes.add(id);
+                _failedResumes.delete(id);
+                _resumePollingIds.add(id);
+            });
+            selectedIds.clear();
+            updateSelectionUI();
+            renderTable();
+            updateGeneratingBadge();
 
-            // Add to tracking set and start polling if not already
-            ids.forEach(id => _resumePollingIds.add(id));
+            showToast(`${ids.length} resume(s) generating — spinners show progress`, 'success');
             startResumePolling();
 
         } catch (err) {
@@ -660,12 +707,13 @@ async function generateResumes() {
 let _resumePollingTimer = null;
 
 function startResumePolling() {
-    if (_resumePollingTimer) return; // already polling
+    if (_resumePollingTimer) return;
 
     _resumePollingTimer = setInterval(async () => {
         if (_resumePollingIds.size === 0) {
             clearInterval(_resumePollingTimer);
             _resumePollingTimer = null;
+            updateGeneratingBadge();
             return;
         }
 
@@ -673,34 +721,55 @@ function startResumePolling() {
             const resp = await fetch('/api/resume-jobs/status');
             const statuses = await resp.json();
 
-            let anyDone = false;
+            let changed = false;
             for (const [jobId, info] of Object.entries(statuses)) {
                 if (!_resumePollingIds.has(jobId)) continue;
 
                 if (info.status === 'done') {
                     _resumePollingIds.delete(jobId);
-                    anyDone = true;
+                    _generatingResumes.delete(jobId);
+                    changed = true;
                 } else if (info.status === 'error') {
                     _resumePollingIds.delete(jobId);
-                    showToast(`Resume failed: ${info.message}`, 'error');
+                    _generatingResumes.delete(jobId);
+                    _failedResumes.add(jobId);
+                    changed = true;
                 }
             }
 
-            if (anyDone) {
-                loadJobs(currentTab); // refresh table to show download icons
+            if (changed) {
+                loadJobs(currentTab);
+                updateGeneratingBadge();
             }
 
             if (_resumePollingIds.size === 0) {
                 clearInterval(_resumePollingTimer);
                 _resumePollingTimer = null;
-                showToast('All resumes generated!', 'success');
-                loadJobs(currentTab);
+
+                const failed = _failedResumes.size;
+                if (failed > 0) {
+                    showToast(`Resumes done — ${failed} failed`, 'warning');
+                } else {
+                    showToast('All resumes generated!', 'success');
+                }
                 loadStats();
+                updateGeneratingBadge();
             }
-        } catch(e) {
-            // silent
+        } catch(e) { /* silent */ }
+    }, 3000);
+}
+
+function updateGeneratingBadge() {
+    const total = _generatingResumes.size + _generatingCLs.size;
+    const badge = document.getElementById('generating-badge');
+    if (badge) {
+        if (total > 0) {
+            badge.textContent = `${total} generating`;
+            badge.style.display = 'inline';
+        } else {
+            badge.style.display = 'none';
         }
-    }, 3000); // poll every 3 seconds
+    }
 }
 
 // ---------------------------------------------------------------------------

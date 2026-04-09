@@ -62,19 +62,48 @@ body {
     font-weight: 600;
 }
 
-/* Cover letter / resume download indicators */
-.cl-no {
-    color: #adb5bd;
+/* Cover letter / resume column indicators */
+.cl-empty {
+    color: #dee2e6;
+    font-size: 0.9rem;
 }
 
-td a.text-success {
+.dl-ready {
+    color: #198754;
     font-size: 1.1rem;
     transition: transform 0.15s, color 0.15s;
 }
 
-td a.text-success:hover {
+.dl-ready:hover {
     color: #0d6efd !important;
     transform: scale(1.2);
+}
+
+.gen-spinner {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Row generating state — subtle amber left border + light bg */
+#job-table tbody tr.row-generating {
+    border-left: 3px solid #ffc107;
+    background-color: #fffdf5 !important;
+}
+
+/* Row failed state — red left border */
+#job-table tbody tr.row-failed {
+    border-left: 3px solid #dc3545;
+    background-color: #fff8f8 !important;
+}
+
+/* Completed flash animation */
+@keyframes rowCompleted {
+    0% { background-color: #d4edda; }
+    100% { background-color: transparent; }
+}
+
+#job-table tbody tr.row-just-completed {
+    animation: rowCompleted 1.5s ease-out;
 }
 
 /* Nav pills custom */
