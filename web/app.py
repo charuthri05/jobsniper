@@ -942,8 +942,9 @@ def api_generate_resumes():
     if _resume_progress["status"] == "running":
         return jsonify({"error": "Resume generation already in progress"}), 409
 
+    steps_per_job = 3 if mode == "thorough" else 2  # stages + compile
     _resume_progress["current"] = 0
-    _resume_progress["total"] = len(job_ids)
+    _resume_progress["total"] = len(job_ids) * steps_per_job
     _resume_progress["status"] = "running"
     _resume_progress["message"] = "Starting..."
 
@@ -961,26 +962,30 @@ def api_generate_resumes():
             _resume_progress["status"] = "done"
             return
 
-        if mode == "thorough":
-            _resume_progress["message"] = "Thorough: Plan → Review → Execute (Claude CLI)"
-        else:
-            _resume_progress["message"] = "Fast: Plan → Execute (Claude CLI)"
-
         generated = 0
         errors = 0
 
         for i, job_id in enumerate(job_ids):
             job = get_job_by_id(job_id)
             if not job:
-                _resume_progress["current"] = i + 1
+                _resume_progress["current"] = (i + 1) * steps_per_job
                 continue
 
-            _resume_progress["message"] = f"Resume {i+1}/{len(job_ids)}: {job['title']} at {job['company']}"
+            base_step = i * steps_per_job
+
+            def progress_cb(msg, _base=base_step):
+                # Advance bar based on stage keywords
+                if "Stage 1" in msg and "done" in msg:
+                    _resume_progress["current"] = _base + 1
+                elif "Stage 2" in msg and "done" in msg:
+                    _resume_progress["current"] = _base + 2
+                elif "Stage 3" in msg and "done" in msg:
+                    _resume_progress["current"] = _base + (3 if steps_per_job > 2 else 2)
+                elif "Compiling" in msg or "saved" in msg:
+                    _resume_progress["current"] = (i + 1) * steps_per_job
+                _resume_progress["message"] = f"[{i+1}/{len(job_ids)}] {msg}"
 
             try:
-                def progress_cb(msg):
-                    _resume_progress["message"] = f"[{i+1}/{len(job_ids)}] {msg}"
-
                 skip_review = (mode == "fast")
                 result = generate_resume(job, progress_callback=progress_cb, skip_review=skip_review)
 
@@ -994,7 +999,7 @@ def api_generate_resumes():
                 errors += 1
                 _resume_progress["message"] = f"Error: {e}"
 
-            _resume_progress["current"] = i + 1
+            _resume_progress["current"] = (i + 1) * steps_per_job
 
         method = "fast" if mode == "fast" else "thorough"
         _resume_progress["status"] = "done"
