@@ -33,12 +33,18 @@ def find_pdflatex() -> Optional[str]:
     if path:
         return path
 
-    # Check common macOS TeX installation paths
+    # Check common TeX installation paths across platforms
     common_paths = [
-        "/Library/TeX/texbin/pdflatex",  # MacTeX/BasicTeX
+        "/Library/TeX/texbin/pdflatex",  # macOS MacTeX/BasicTeX (symlink, always works)
+        "/usr/local/texlive/2026basic/bin/universal-darwin/pdflatex",
+        "/usr/local/texlive/2026/bin/universal-darwin/pdflatex",
         "/usr/local/texlive/2025basic/bin/universal-darwin/pdflatex",
         "/usr/local/texlive/2025/bin/universal-darwin/pdflatex",
         "/usr/texbin/pdflatex",
+        # Windows MiKTeX
+        r"C:\Program Files\MiKTeX\miktex\bin\x64\pdflatex.exe",
+        # Linux
+        "/usr/bin/pdflatex",
     ]
 
     for tex_path in common_paths:
