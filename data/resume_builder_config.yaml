@@ -4,7 +4,7 @@ active_provider: claude_cli
 claude_cli:
   enabled: true
   mode: print
-  timeout_seconds: 300
+  timeout_seconds: 600
   retry_on_failure: true
   max_retries: 2
   add_dir_flag: --add-dir

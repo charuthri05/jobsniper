@@ -194,6 +194,15 @@ def generate_resume(job: dict, progress_callback=None, skip_review: bool = False
     except Exception as e:
         logger.warning(f"Could not update protected content: {e}")
 
+    # Clean old output folders — Claude CLI's --add-dir scans everything
+    # in resume_output/, and accumulated files slow down every call.
+    output_base = PROJECT_ROOT / "data" / "resume_output"
+    if output_base.exists():
+        for old_dir in output_base.iterdir():
+            if old_dir.is_dir():
+                shutil.rmtree(old_dir, ignore_errors=True)
+        update("Cleaned previous output files")
+
     # Run each stage individually so we can update progress between them.
     # The orchestrator's code is untouched — we call run() with stage=1, 2, 3.
     try:
