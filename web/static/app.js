@@ -624,14 +624,14 @@ function setResumeMode(mode) {
     }
 }
 
+let _resumePollingIds = new Set(); // track all job IDs being generated
+
 async function generateResumes() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
 
     const modeLabel = resumeMode === 'fast' ? 'Fast (Plan + Execute)' : 'Thorough (Plan + Review + Execute)';
     showConfirm(`Generate ${modeLabel} resumes for ${ids.length} job(s)?`, async () => {
-        lastResumeGeneratedIds = [...lastResumeGeneratedIds, ...ids];
-
         try {
             const resp = await fetch('/api/generate-resumes', {
                 method: 'POST',
@@ -645,50 +645,62 @@ async function generateResumes() {
                 return;
             }
 
-            showToast(`${ids.length} resume(s) generating in background...`, 'success');
+            showToast(`${ids.length} resume(s) generating in background. Download icons will appear when ready.`, 'success');
 
-            // Show progress bar
-            document.getElementById('progress-container').style.display = 'block';
-            document.getElementById('progress-label').textContent = 'Generating resumes...';
+            // Add to tracking set and start polling if not already
+            ids.forEach(id => _resumePollingIds.add(id));
+            startResumePolling();
 
-            // Start SSE for overall progress
-            const evtSource = new EventSource('/api/generate-resumes/progress');
-            evtSource.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                const pct = data.total > 0 ? Math.round((data.current / data.total) * 100) : 0;
-
-                document.getElementById('progress-bar').style.width = pct + '%';
-                document.getElementById('progress-count').textContent = `${data.current}/${data.total}`;
-                document.getElementById('progress-detail').textContent = data.message;
-                document.getElementById('progress-label').textContent =
-                    data.status === 'done' ? 'Complete' : 'Generating resumes...';
-
-                // Refresh table periodically to show new download icons
-                if (data.current > 0) {
-                    loadJobs(currentTab);
-                }
-
-                if (data.status === 'done') {
-                    evtSource.close();
-                    setTimeout(() => {
-                        document.getElementById('progress-container').style.display = 'none';
-                        loadJobs(currentTab);
-                        loadStats();
-                        showToast(data.message, 'success');
-                    }, 1000);
-                }
-            };
-
-            evtSource.onerror = () => {
-                evtSource.close();
-                document.getElementById('progress-container').style.display = 'none';
-                loadJobs(currentTab);
-                loadStats();
-            };
         } catch (err) {
             showToast('Failed to start resume generation', 'error');
         }
     });
+}
+
+let _resumePollingTimer = null;
+
+function startResumePolling() {
+    if (_resumePollingTimer) return; // already polling
+
+    _resumePollingTimer = setInterval(async () => {
+        if (_resumePollingIds.size === 0) {
+            clearInterval(_resumePollingTimer);
+            _resumePollingTimer = null;
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/resume-jobs/status');
+            const statuses = await resp.json();
+
+            let anyDone = false;
+            for (const [jobId, info] of Object.entries(statuses)) {
+                if (!_resumePollingIds.has(jobId)) continue;
+
+                if (info.status === 'done') {
+                    _resumePollingIds.delete(jobId);
+                    anyDone = true;
+                } else if (info.status === 'error') {
+                    _resumePollingIds.delete(jobId);
+                    showToast(`Resume failed: ${info.message}`, 'error');
+                }
+            }
+
+            if (anyDone) {
+                loadJobs(currentTab); // refresh table to show download icons
+            }
+
+            if (_resumePollingIds.size === 0) {
+                clearInterval(_resumePollingTimer);
+                _resumePollingTimer = null;
+                showToast('All resumes generated!', 'success');
+                loadJobs(currentTab);
+                loadStats();
+            }
+        } catch(e) {
+            // silent
+        }
+    }, 3000); // poll every 3 seconds
 }
 
 // ---------------------------------------------------------------------------
