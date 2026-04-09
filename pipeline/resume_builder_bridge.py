@@ -127,8 +127,8 @@ def check_builder_ready() -> dict:
         issues.append("Missing: data/experience/current.md (current work experience)")
 
     template = PROJECT_ROOT / "data" / "resume_template" / "template.tex"
-    if not template.exists():
-        issues.append("Missing: data/resume_template/template.tex (LaTeX template)")
+    if not template.exists() or len(template.read_text(encoding="utf-8").strip()) < 50:
+        issues.append("Missing: Base resume (upload your resume in Settings → Resume Builder)")
 
     # Check Claude CLI
     if not shutil.which("claude"):

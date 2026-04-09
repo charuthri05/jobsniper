@@ -414,6 +414,131 @@ def api_resume_builder_extract():
         _os.unlink(tmp_path)
 
 
+@app.route("/api/resume-builder/convert-to-latex", methods=["POST"])
+def api_convert_to_latex():
+    """Upload a resume (PDF/DOCX/TXT), extract text, convert to Jake's Resume LaTeX format via AI."""
+    import os as _os
+    import tempfile as _tempfile
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    filename = (file.filename or "").lower()
+
+    # If it's already a .tex file, just return the content
+    if filename.endswith(".tex"):
+        content = file.read().decode("utf-8", errors="ignore")
+        return jsonify({"latex": content, "is_tex": True})
+
+    if not any(filename.endswith(ext) for ext in (".pdf", ".docx", ".doc", ".txt", ".md")):
+        return jsonify({"error": "Supported formats: PDF, DOCX, TXT, MD, TEX"}), 400
+
+    suffix = "." + filename.rsplit(".", 1)[-1]
+    with _tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        file.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        resume_text = _extract_resume_text(tmp_path, suffix)
+        if not resume_text or len(resume_text.strip()) < 50:
+            return jsonify({"error": "Could not extract enough text from file"}), 400
+
+        # Convert to LaTeX using AI
+        latex = _convert_resume_to_latex(resume_text)
+        return jsonify({"latex": latex, "is_tex": False, "chars": len(latex)})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        _os.unlink(tmp_path)
+
+
+def _convert_resume_to_latex(resume_text: str) -> str:
+    """Use AI to convert plain resume text into Jake's Resume LaTeX format."""
+    from utils.ai_client import chat_completion
+    import re
+
+    system = r"""You are a LaTeX resume formatter. Convert the resume text into a complete, compilable LaTeX document using Jake's Resume template format.
+
+RULES:
+1. Output ONLY the complete LaTeX document — no explanations, no markdown code blocks
+2. Start with \documentclass and end with \end{document}
+3. Keep ALL facts exactly as provided — do not invent or modify any information
+4. Use the exact LaTeX structure shown below for formatting
+5. Include ALL sections: contact info, education, skills, experience, projects (if present)
+
+USE THIS EXACT PREAMBLE AND COMMANDS:
+
+\documentclass[letterpaper,10pt]{article}
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{fontawesome5}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{\vspace{-4pt}\scshape\raggedright\large}{}{0em}{}[\color{black}\titlerule \vspace{-6pt}]
+\pdfgentounicode=1
+
+% Custom commands (use these exactly):
+\newcommand{\resumeItem}[1]{\item\small{{#1 \vspace{-2pt}}}}
+\newcommand{\resumeSubheading}[4]{\vspace{-2pt}\item\begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}\textbf{#1} & #2 \\\textit{\small#3} & \textit{\small #4} \\\end{tabular*}\vspace{-5pt}}
+\newcommand{\resumeSubheadingEducation}[5]{\vspace{-1pt}\item\begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}\textbf{#1} & #4 \\{\small#3} & {\small#5} \\\end{tabular*}\vspace{-7pt}}
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-3pt}}
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=*, itemsep=2pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}"""
+
+    user_msg = f"""Convert this resume into the Jake's Resume LaTeX format described above.
+
+RESUME TEXT:
+{resume_text[:8000]}
+
+Output the COMPLETE LaTeX document. Start with \\documentclass and end with \\end{{document}}."""
+
+    raw = chat_completion(system=system, user_message=user_msg, max_tokens=4000)
+
+    # Extract LaTeX — try code block first, then raw
+    code_match = re.search(r"```(?:latex|tex)?\s*(.*?)```", raw, re.DOTALL)
+    if code_match:
+        return code_match.group(1).strip()
+
+    doc_match = re.search(r"(\\documentclass.*?\\end\{document\})", raw, re.DOTALL)
+    if doc_match:
+        return doc_match.group(1).strip()
+
+    if "\\documentclass" in raw and "\\end{document}" in raw:
+        return raw.strip()
+
+    raise ValueError("AI could not convert the resume to LaTeX format")
+
+
 @app.route("/api/resume-builder/status")
 def api_resume_builder_status():
     """Check if the 3-stage resume builder is ready to use."""

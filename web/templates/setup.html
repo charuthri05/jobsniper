@@ -303,17 +303,20 @@
                           placeholder="# Project Name&#10;Tech: Python, AWS, React&#10;- Built agentic pipeline processing 3000 Q&A pairs..."></textarea>
             </div>
 
-            <!-- LaTeX Template -->
+            <!-- Base Resume (LaTeX Template) -->
             <div class="mb-3">
-                <label class="form-label small fw-medium">LaTeX Resume Template</label>
+                <label class="form-label small fw-medium">Base Resume</label>
+                <p class="text-muted small mb-2">
+                    Upload your resume (PDF, DOCX, TXT, or LaTeX .tex). If not a .tex file, AI will convert it
+                    to LaTeX format automatically. This becomes the base that gets tailored per job.
+                </p>
                 <div class="d-flex gap-2 mb-2">
-                    <input type="file" class="form-control form-control-sm" accept=".tex,.txt"
-                           onchange="uploadTemplateFile(this)" style="max-width:300px;">
+                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md,.tex"
+                           onchange="uploadBaseResume(this)" style="max-width:300px;">
                     <span class="small text-muted align-self-center" id="rb-upload-status-template"></span>
                 </div>
                 <textarea class="form-control form-control-sm font-monospace" id="rb-template" rows="6"
-                          placeholder="\documentclass[letterpaper,10pt]{article}&#10;..."></textarea>
-                <div class="form-text">Jake's Resume template is pre-loaded. Replace with your own if needed.</div>
+                          placeholder="Upload your resume above — it will be converted to LaTeX automatically.&#10;Or paste LaTeX code directly here if you have a .tex file."></textarea>
             </div>
         </div>
 
@@ -993,18 +996,56 @@ async function extractFileToTextarea(input, textareaId, statusId) {
     }
 }
 
-async function uploadTemplateFile(input) {
+async function uploadBaseResume(input) {
     const file = input.files[0];
     if (!file) return;
 
     const statusEl = document.getElementById('rb-upload-status-template');
+    const filename = file.name.toLowerCase();
+
+    // If it's a .tex file, just read and fill
+    if (filename.endsWith('.tex')) {
+        try {
+            const text = await file.text();
+            document.getElementById('rb-template').value = text;
+            statusEl.textContent = `Loaded ${file.name}`;
+            statusEl.className = 'small text-success align-self-center';
+        } catch(e) {
+            statusEl.textContent = 'Failed to read file';
+            statusEl.className = 'small text-danger align-self-center';
+        }
+        return;
+    }
+
+    // For PDF/DOCX/TXT — upload, extract text, convert to LaTeX via AI
+    statusEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Converting to LaTeX...';
+    statusEl.className = 'small text-primary align-self-center';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
     try {
-        const text = await file.text();
-        document.getElementById('rb-template').value = text;
-        statusEl.textContent = `Loaded ${file.name}`;
+        const resp = await fetch('/api/resume-builder/convert-to-latex', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            statusEl.textContent = data.error || 'Conversion failed';
+            statusEl.className = 'small text-danger align-self-center';
+            return;
+        }
+
+        document.getElementById('rb-template').value = data.latex;
+        if (data.is_tex) {
+            statusEl.textContent = `Loaded ${file.name}`;
+        } else {
+            statusEl.textContent = `Converted ${file.name} to LaTeX (${data.chars} chars)`;
+        }
         statusEl.className = 'small text-success align-self-center';
     } catch(e) {
-        statusEl.textContent = 'Failed to read file';
+        statusEl.textContent = 'Conversion failed: ' + e.message;
         statusEl.className = 'small text-danger align-self-center';
     }
 }
