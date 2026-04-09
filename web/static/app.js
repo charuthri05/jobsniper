@@ -6,6 +6,7 @@ let selectedIds = new Set();
 let sortField = 'score';
 let sortAsc = false;
 let currentDetailJob = null;
+let resumeMode = 'fast'; // 'fast' or 'thorough'
 
 // ---------------------------------------------------------------------------
 // Init
@@ -395,6 +396,7 @@ function updateSelectionUI() {
     // Enable/disable action buttons
     document.getElementById('btn-generate').disabled = count === 0;
     document.getElementById('btn-generate-resumes').disabled = count === 0;
+    document.getElementById('btn-resume-mode-toggle').disabled = count === 0;
     document.getElementById('btn-autofill').disabled = count === 0;
     document.getElementById('btn-skip').disabled = count === 0;
 
@@ -610,18 +612,31 @@ async function generateSelected() {
 
 let lastResumeGeneratedIds = [];
 
+function setResumeMode(mode) {
+    resumeMode = mode;
+    const btn = document.getElementById('btn-generate-resumes');
+    if (mode === 'fast') {
+        btn.innerHTML = '<i class="bi bi-lightning-fill me-1"></i>Fast Resume';
+        showToast('Resume mode: Fast (~30s per job)', 'info');
+    } else {
+        btn.innerHTML = '<i class="bi bi-shield-check me-1"></i>Thorough Resume';
+        showToast('Resume mode: Thorough 3-stage (~7min per job)', 'info');
+    }
+}
+
 async function generateResumes() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
 
-    showConfirm(`Generate tailored resumes for ${ids.length} job(s)?`, async () => {
+    const modeLabel = resumeMode === 'fast' ? 'Fast (~30s each)' : 'Thorough (~7min each)';
+    showConfirm(`Generate ${modeLabel} resumes for ${ids.length} job(s)?`, async () => {
         lastResumeGeneratedIds = [...ids];
 
         try {
             const resp = await fetch('/api/generate-resumes', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({job_ids: ids})
+                body: JSON.stringify({job_ids: ids, mode: resumeMode})
             });
 
             if (resp.status === 409) {

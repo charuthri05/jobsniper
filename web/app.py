@@ -887,10 +887,13 @@ _resume_progress = {"current": 0, "total": 0, "status": "idle", "message": ""}
 
 @app.route("/api/generate-resumes", methods=["POST"])
 def api_generate_resumes():
-    """Generate tailored resume PDFs using the 3-stage Claude CLI pipeline.
-    Falls back to the built-in generator if the builder inputs aren't set up."""
+    """Generate tailored resume PDFs. Supports two modes:
+    - fast: single AI API call → LaTeX → PDF (~30s)
+    - thorough: 3-stage Claude CLI pipeline (~7min)
+    """
     data = request.get_json()
     job_ids = data.get("job_ids", [])
+    mode = data.get("mode", "fast")
 
     if not job_ids:
         return jsonify({"error": "No jobs selected"}), 400
@@ -904,16 +907,18 @@ def api_generate_resumes():
     _resume_progress["message"] = "Starting..."
 
     def run_resume_generation():
-        from pipeline.resume_builder_bridge import generate_resume, check_builder_ready
+        from pipeline.resume_builder_bridge import generate_resume, generate_resume_fast, check_builder_ready
 
         builder_status = check_builder_ready()
-        use_3stage = builder_status["ready"]
+        builder_ready = builder_status["ready"]
 
-        if use_3stage:
-            _resume_progress["message"] = "Using Claude CLI resume builder (Plan → Review → Execute)"
+        if mode == "thorough" and builder_ready:
+            _resume_progress["message"] = "Thorough mode: 3-stage Claude CLI pipeline"
+        elif builder_ready:
+            _resume_progress["message"] = "Fast mode: single AI call → LaTeX → PDF"
         else:
             _resume_progress["message"] = (
-                "3-stage builder not ready — using built-in generator. "
+                "Resume builder not ready — using built-in generator. "
                 "Set up experience files in Settings to enable it."
             )
 
@@ -929,21 +934,25 @@ def api_generate_resumes():
             _resume_progress["message"] = f"Resume {i+1}/{len(job_ids)}: {job['title']} at {job['company']}"
 
             try:
-                if use_3stage:
+                if mode == "thorough" and builder_ready:
                     def progress_cb(msg):
                         _resume_progress["message"] = f"[{i+1}/{len(job_ids)}] {msg}"
-
                     result = generate_resume(job, progress_callback=progress_cb)
-                    if result["success"]:
-                        generated += 1
-                    else:
-                        errors += 1
-                        _resume_progress["message"] = f"Error: {result['error']}"
+                elif builder_ready:
+                    def progress_cb(msg):
+                        _resume_progress["message"] = f"[{i+1}/{len(job_ids)}] {msg}"
+                    result = generate_resume_fast(job, progress_callback=progress_cb)
                 else:
                     from pipeline.resume_generator import generate_tailored_resume
                     profile = load_profile()
                     generate_tailored_resume(job, profile)
+                    result = {"success": True}
+
+                if result.get("success"):
                     generated += 1
+                else:
+                    errors += 1
+                    _resume_progress["message"] = f"Error: {result.get('error', 'unknown')}"
 
             except Exception as e:
                 errors += 1
@@ -951,7 +960,7 @@ def api_generate_resumes():
 
             _resume_progress["current"] = i + 1
 
-        method = "3-stage Claude CLI" if use_3stage else "built-in"
+        method = "fast" if mode == "fast" else "thorough"
         _resume_progress["status"] = "done"
         _resume_progress["message"] = f"Done ({method}): {generated} resumes, {errors} errors"
 
