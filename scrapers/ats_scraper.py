@@ -170,14 +170,85 @@ def fetch_lever_jobs(company_slug: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Ashby
+# ---------------------------------------------------------------------------
+
+def normalize_ashby_job(raw: dict, company_slug: str) -> dict:
+    """Convert a single Ashby API job object to our standard schema."""
+    url = raw.get("jobUrl") or raw.get("applyUrl") or ""
+    if not url:
+        url = f"https://jobs.ashbyhq.com/{company_slug}/{raw.get('id', '')}"
+
+    location = raw.get("location", "")
+    if raw.get("isRemote"):
+        location = f"{location} (Remote)" if location else "Remote"
+
+    description = _strip_html(raw.get("descriptionHtml") or raw.get("descriptionPlain", ""))
+
+    # Extract salary from compensation field
+    salary_min = None
+    salary_max = None
+    comp = raw.get("compensation")
+    if comp:
+        ranges = comp.get("compensationTierSummary", "")
+        if not ranges:
+            tiers = comp.get("compensationTiers", [])
+            for tier in tiers:
+                if tier.get("tierName", "").lower() in ("base", "salary", ""):
+                    salary_min = tier.get("min")
+                    salary_max = tier.get("max")
+                    break
+
+    return {
+        "id": _make_id(url),
+        "title": raw.get("title", "Unknown"),
+        "company": company_slug.capitalize(),
+        "location": location,
+        "url": url,
+        "source": "ashby",
+        "description": description,
+        "salary_min": int(salary_min) if salary_min else None,
+        "salary_max": int(salary_max) if salary_max else None,
+        "date_posted": raw.get("publishedAt", ""),
+        "date_scraped": _now_iso(),
+        "status": "new",
+    }
+
+
+async def _fetch_ashby_async(client: httpx.AsyncClient, company_slug: str) -> tuple[str, list[dict]]:
+    """Fetch all jobs from an Ashby board asynchronously."""
+    url = f"https://api.ashbyhq.com/posting-api/job-board/{company_slug}?includeCompensation=true"
+    try:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        jobs = resp.json().get("jobs", [])
+        return company_slug, [normalize_ashby_job(j, company_slug) for j in jobs]
+    except Exception:
+        return company_slug, []
+
+
+def fetch_ashby_jobs(company_slug: str) -> list[dict]:
+    """Fetch all jobs from an Ashby board (sync wrapper)."""
+    url = f"https://api.ashbyhq.com/posting-api/job-board/{company_slug}?includeCompensation=true"
+    try:
+        resp = httpx.get(url, timeout=15)
+        resp.raise_for_status()
+        jobs = resp.json().get("jobs", [])
+        return [normalize_ashby_job(j, company_slug) for j in jobs]
+    except Exception:
+        return []
+
+
+# ---------------------------------------------------------------------------
 # Async batch fetch — all boards fire at once
 # ---------------------------------------------------------------------------
 
 async def _fetch_all_async(preferences: dict) -> list[dict]:
-    """Fire all Greenhouse + Lever requests simultaneously."""
+    """Fire all Greenhouse + Lever + Ashby requests simultaneously."""
     greenhouse_boards = preferences.get("greenhouse_boards", [])
     lever_boards = preferences.get("lever_boards", [])
-    total_boards = len(greenhouse_boards) + len(lever_boards)
+    ashby_boards = preferences.get("ashby_boards", [])
+    total_boards = len(greenhouse_boards) + len(lever_boards) + len(ashby_boards)
 
     print(f"  Fetching from {total_boards} boards simultaneously...")
 
@@ -190,6 +261,8 @@ async def _fetch_all_async(preferences: dict) -> list[dict]:
             tasks.append(_fetch_greenhouse_async(client, board))
         for slug in lever_boards:
             tasks.append(_fetch_lever_async(client, slug))
+        for slug in ashby_boards:
+            tasks.append(_fetch_ashby_async(client, slug))
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -207,8 +280,8 @@ async def _fetch_all_async(preferences: dict) -> list[dict]:
 
 def fetch_all_ats_jobs(preferences: dict, **kwargs) -> list[dict]:
     """
-    Fetch jobs from all configured Greenhouse and Lever boards.
-    Uses async I/O — all 70 boards fetched simultaneously.
+    Fetch jobs from all configured Greenhouse, Lever, and Ashby boards.
+    Uses async I/O — all boards fetched simultaneously.
     """
     try:
         loop = asyncio.get_running_loop()

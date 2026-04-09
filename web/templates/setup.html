@@ -3,75 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile Setup — Job Pipeline</title>
+    <title>Profile Setup — JobSniper</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/static/style.css" rel="stylesheet">
-    <style>
-        .setup-section {
-            background: white; border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            padding: 24px; margin-bottom: 20px;
-        }
-        .setup-section h6 { color: #6c757d; margin-bottom: 16px; }
-        .dynamic-entry {
-            border-left: 3px solid #0d6efd; background: #f8f9fa;
-            border-radius: 0 8px 8px 0; padding: 16px; margin-bottom: 12px;
-            position: relative;
-        }
-        .btn-remove-entry {
-            position: absolute; top: 8px; right: 8px;
-            background: none; border: none; color: #dc3545;
-            cursor: pointer; font-size: 1.1rem; padding: 2px 6px;
-        }
-        .btn-remove-entry:hover { background: #fee; border-radius: 4px; }
-        .tag-input { font-family: inherit; }
-        .save-bar {
-            position: sticky; bottom: 0; background: white;
-            border-top: 1px solid #dee2e6; padding: 16px 0;
-            z-index: 100; margin: 0 -12px; padding-left: 12px; padding-right: 12px;
-        }
-        /* Upload area */
-        .upload-zone {
-            border: 2px dashed #dee2e6; border-radius: 16px; padding: 48px;
-            text-align: center; cursor: pointer; transition: all 0.2s;
-            background: #fafbfc;
-        }
-        .upload-zone:hover, .upload-zone.dragover {
-            border-color: #0d6efd; background: #f0f6ff;
-        }
-        .upload-zone i { font-size: 3rem; color: #adb5bd; }
-        .upload-zone:hover i, .upload-zone.dragover i { color: #0d6efd; }
-        .step-indicator { display: flex; gap: 8px; align-items: center; }
-        .step-dot {
-            width: 28px; height: 28px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.75rem; font-weight: 600;
-        }
-        .step-dot.active { background: #0d6efd; color: white; }
-        .step-dot.done { background: #198754; color: white; }
-        .step-dot.pending { background: #e9ecef; color: #6c757d; }
-        .step-line { width: 40px; height: 2px; background: #dee2e6; }
-        .step-line.done { background: #198754; }
-        /* Parsing spinner */
-        .parsing-overlay {
-            text-align: center; padding: 60px 20px;
-        }
-        .parsing-overlay .spinner-border { width: 3rem; height: 3rem; }
-        /* AI-filled highlight */
-        .ai-filled { border-color: #86b7fe; background-color: #f0f6ff; }
-    </style>
 </head>
 <body>
 
 <!-- Navbar -->
-<nav class="navbar navbar-expand-lg border-bottom bg-white sticky-top">
+<nav class="navbar border-bottom bg-white sticky-top">
     <div class="container-fluid px-4">
-        <span class="navbar-brand fw-bold">
-            <i class="bi bi-briefcase-fill text-primary me-2"></i>Job Pipeline
-        </span>
+        <a href="/" class="navbar-brand fw-bold text-decoration-none">
+            <i class="bi bi-crosshair text-primary me-2"></i>JobSniper
+        </a>
         <div class="d-flex align-items-center gap-3">
-            <!-- Step indicator -->
             <div class="step-indicator" id="step-indicator">
                 <div class="step-dot active" id="dot-1">1</div>
                 <div class="step-line" id="line-1"></div>
@@ -86,7 +31,7 @@
     </div>
 </nav>
 
-<div class="container py-4" style="max-width: 900px;">
+<div class="container py-4" style="max-width: 1100px;">
 
     <!-- ================================================================== -->
     <!-- STEP 1: Upload Resume                                               -->
@@ -94,10 +39,10 @@
     <div id="step-upload">
         <div class="text-center mb-4">
             <h4 class="fw-bold">Get Started</h4>
-            <p class="text-muted">Upload your resume and we'll auto-fill everything for you</p>
+            <p class="text-muted">Upload your resume and we'll auto-fill your profile</p>
         </div>
 
-        <div class="setup-section">
+        <div class="setup-section" style="max-width:600px; margin:0 auto;">
             <div class="upload-zone" id="upload-zone"
                  onclick="document.getElementById('resume-file').click()"
                  ondragover="event.preventDefault(); this.classList.add('dragover')"
@@ -117,7 +62,7 @@
                 <span class="text-muted small">or</span>
                 <br>
                 <button class="btn btn-link btn-sm text-decoration-none" onclick="skipToForm()">
-                    Fill in manually without a resume
+                    Fill in manually
                 </button>
                 <span id="existing-profile-link" style="display:none;">
                     &nbsp;|&nbsp;
@@ -133,7 +78,7 @@
     <!-- STEP 2: Parsing (spinner)                                           -->
     <!-- ================================================================== -->
     <div id="step-parsing" style="display:none;">
-        <div class="setup-section">
+        <div class="setup-section" style="max-width:600px; margin:0 auto;">
             <div class="parsing-overlay">
                 <div class="spinner-border text-primary mb-3"></div>
                 <h5>Parsing your resume...</h5>
@@ -143,275 +88,392 @@
     </div>
 
     <!-- ================================================================== -->
-    <!-- STEP 3: Review & Edit Form                                          -->
+    <!-- STEP 3: Tabbed Form                                                 -->
     <!-- ================================================================== -->
     <form id="setup-form" style="display:none;" onsubmit="return false;">
 
         <!-- Parse success banner -->
-        <div class="alert alert-success py-2 mb-3 d-flex align-items-center" id="parse-banner" style="display:none !important;">
+        <div class="alert alert-success py-2 mb-4 d-flex align-items-center" id="parse-banner" style="display:none !important;">
             <i class="bi bi-magic me-2"></i>
             <span class="small">Profile auto-filled from your resume. Review the fields below and fix anything that looks off.</span>
         </div>
 
-        <!-- Basic Information -->
-        <div class="setup-section">
-            <h6><i class="bi bi-person me-2"></i>Basic Information</h6>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label small">Full Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="f-name" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Email <span class="text-danger">*</span></label>
-                    <input type="email" class="form-control" id="f-email" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Phone <span class="text-danger">*</span></label>
-                    <input type="tel" class="form-control" id="f-phone" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Location <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="f-location" placeholder="City, State">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">LinkedIn URL</label>
-                    <input type="url" class="form-control" id="f-linkedin" placeholder="https://linkedin.com/in/...">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">GitHub URL</label>
-                    <input type="url" class="form-control" id="f-github" placeholder="https://github.com/...">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Current Title <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="f-current-title" placeholder="Software Engineer">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Years of Experience <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control" id="f-yoe" min="0" max="50">
-                </div>
-                <div class="col-12">
-                    <label class="form-label small">Target Job Titles <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control tag-input" id="f-target-titles"
-                           placeholder="Software Engineer, Backend Engineer, Full Stack Engineer">
-                    <div class="form-text">Comma-separated list</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Summary -->
-        <div class="setup-section">
-            <h6><i class="bi bi-card-text me-2"></i>Professional Summary</h6>
-            <textarea class="form-control" id="f-summary" rows="3"
-                      placeholder="2-3 sentence professional summary"></textarea>
-        </div>
-
-        <!-- Skills -->
-        <div class="setup-section">
-            <h6><i class="bi bi-tools me-2"></i>Skills</h6>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label small">Programming Languages</label>
-                    <input type="text" class="form-control tag-input" id="f-languages" placeholder="Python, Java, TypeScript">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Frameworks</label>
-                    <input type="text" class="form-control tag-input" id="f-frameworks" placeholder="React, Spring Boot, FastAPI">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Infrastructure / Cloud</label>
-                    <input type="text" class="form-control tag-input" id="f-infrastructure" placeholder="AWS, Docker, Kubernetes">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Databases</label>
-                    <input type="text" class="form-control tag-input" id="f-databases" placeholder="PostgreSQL, Redis, MongoDB">
-                </div>
-                <div class="col-12">
-                    <label class="form-label small">Other Skills</label>
-                    <input type="text" class="form-control tag-input" id="f-other-skills" placeholder="distributed systems, system design, REST APIs">
-                </div>
-            </div>
-        </div>
-
-        <!-- Experience -->
-        <div class="setup-section">
-            <h6><i class="bi bi-building me-2"></i>Experience</h6>
-            <div id="experience-entries"></div>
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addExperienceEntry()">
-                <i class="bi bi-plus-lg me-1"></i>Add Experience
-            </button>
-        </div>
-
-        <!-- Education -->
-        <div class="setup-section">
-            <h6><i class="bi bi-mortarboard me-2"></i>Education</h6>
-            <div id="education-entries"></div>
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addEducationEntry()">
-                <i class="bi bi-plus-lg me-1"></i>Add Education
-            </button>
-        </div>
-
-        <!-- Raw Resume Text -->
-        <div class="setup-section">
-            <h6><i class="bi bi-file-earmark-text me-2"></i>Raw Resume Text</h6>
-            <p class="text-muted small mb-2">This is the full text used by the AI for scoring and generation.</p>
-            <textarea class="form-control" id="f-resume-text" rows="6"></textarea>
-        </div>
-
-        <!-- Resume Builder Files -->
-        <div class="setup-section">
-            <h6><i class="bi bi-file-earmark-richtext me-2"></i>Resume Builder (3-Stage Claude CLI)</h6>
-            <p class="text-muted small mb-3">
-                These files power the advanced resume builder. Upload or paste your detailed work experience,
-                projects, and LaTeX template. The builder uses Claude CLI to create ATS-optimized resumes
-                tailored to each job description.
-            </p>
-
-            <div id="rb-status" class="mb-3"></div>
-
-            <!-- Current Experience -->
-            <div class="mb-3">
-                <label class="form-label small fw-medium">Current Work Experience (Markdown)</label>
-                <div class="d-flex gap-2 mb-2">
-                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
-                           onchange="extractFileToTextarea(this, 'rb-experience-current', 'rb-upload-status-current')" style="max-width:300px;">
-                    <span class="small text-muted align-self-center" id="rb-upload-status-current"></span>
-                </div>
-                <textarea class="form-control form-control-sm" id="rb-experience-current" rows="8"
-                          placeholder="# Current Company — Your Role&#10;&#10;## Project 1&#10;- Built X achieving Y by doing Z&#10;- Reduced latency by 40% through...&#10;&#10;## Project 2&#10;- Architected microservice handling 150K req/min..."></textarea>
-            </div>
-
-            <!-- Previous Experiences (multiple) -->
-            <div class="mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <label class="form-label small fw-medium mb-0">Previous Work Experiences</label>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPrevExpEntry()">
-                        <i class="bi bi-plus-lg me-1"></i>Add Company
-                    </button>
-                </div>
-                <div id="rb-prev-exp-entries"></div>
-            </div>
-
-            <!-- Projects -->
-            <div class="mb-3">
-                <label class="form-label small fw-medium">Projects (Markdown)</label>
-                <div class="d-flex gap-2 mb-2">
-                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
-                           onchange="extractFileToTextarea(this, 'rb-projects', 'rb-upload-status-projects')" style="max-width:300px;">
-                    <span class="small text-muted align-self-center" id="rb-upload-status-projects"></span>
-                </div>
-                <textarea class="form-control form-control-sm" id="rb-projects" rows="6"
-                          placeholder="# Project Name&#10;Tech: Python, AWS, React&#10;- Built agentic pipeline processing 3000 Q&A pairs..."></textarea>
-            </div>
-
-            <!-- Base Resume (LaTeX Template) -->
-            <div class="mb-3">
-                <label class="form-label small fw-medium">Base Resume</label>
-                <p class="text-muted small mb-2">
-                    Upload your resume (PDF, DOCX, TXT, or LaTeX .tex). If not a .tex file, AI will convert it
-                    to LaTeX format automatically. This becomes the base that gets tailored per job.
-                </p>
-                <div class="d-flex gap-2 mb-2">
-                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md,.tex"
-                           onchange="uploadBaseResume(this)" style="max-width:300px;">
-                    <span class="small text-muted align-self-center" id="rb-upload-status-template"></span>
-                </div>
-                <textarea class="form-control form-control-sm font-monospace" id="rb-template" rows="6"
-                          placeholder="Upload your resume above — it will be converted to LaTeX automatically.&#10;Or paste LaTeX code directly here if you have a .tex file."></textarea>
-            </div>
-        </div>
-
-        <!-- Preferences -->
-        <div class="setup-section">
-            <h6><i class="bi bi-sliders me-2"></i>Job Search Preferences</h6>
-            <div class="row g-3">
-                <div class="col-12">
-                    <label class="form-label small">Target Roles</label>
-                    <input type="text" class="form-control tag-input" id="f-target-roles"
-                           placeholder="Software Engineer, Backend Engineer, Full Stack Engineer">
-                    <div class="form-text">Comma-separated. These are used as search queries.</div>
-                </div>
-                <div class="col-12">
-                    <label class="form-label small">Locations / Countries</label>
-                    <input type="text" class="form-control tag-input" id="f-locations"
-                           placeholder="United States, Canada, Remote">
-                    <div class="form-text">Comma-separated. Leave empty to search all locations.</div>
-                </div>
-                <div class="col-12">
-                    <label class="form-label small">Blacklisted Companies</label>
-                    <input type="text" class="form-control tag-input" id="f-blacklist"
-                           placeholder="Company A, Company B">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small">Minimum Salary ($)</label>
-                    <input type="number" class="form-control" id="f-min-salary" placeholder="130000">
-                </div>
-                <div class="col-md-4">
-                    <div class="form-check mt-4">
-                        <input class="form-check-input" type="checkbox" id="f-visa">
-                        <label class="form-check-label small" for="f-visa">Visa Sponsorship Required</label>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-check mt-4">
-                        <input class="form-check-input" type="checkbox" id="f-remote-only">
-                        <label class="form-check-label small" for="f-remote-only">Remote Only</label>
-                    </div>
-                </div>
-                <div class="col-12">
-                    <label class="form-label small">Seniority Levels</label>
-                    <div class="d-flex gap-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="f-seniority-entry" value="entry-level">
-                            <label class="form-check-label small" for="f-seniority-entry">Entry Level</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="f-seniority-mid" value="mid">
-                            <label class="form-check-label small" for="f-seniority-mid">Mid</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="f-seniority-senior" value="senior">
-                            <label class="form-check-label small" for="f-seniority-senior">Senior</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <label class="form-label small mb-0 fw-medium">Job Boards</label>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="discoverBoards()">
-                            <i class="bi bi-search me-1"></i>Auto-Discover New Boards
+        <div class="row g-4">
+            <!-- ── Left Sidebar Navigation ── -->
+            <div class="col-md-3">
+                <div class="setup-sidebar">
+                    <div class="nav flex-column nav-pills" id="setup-tabs" role="tablist">
+                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-personal" type="button" role="tab">
+                            <i class="bi bi-person me-2"></i>Personal Info
+                        </button>
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-career" type="button" role="tab">
+                            <i class="bi bi-briefcase me-2"></i>Career & Skills
+                        </button>
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-experience" type="button" role="tab">
+                            <i class="bi bi-building me-2"></i>Experience
+                        </button>
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-resume" type="button" role="tab">
+                            <i class="bi bi-file-earmark-text me-2"></i>Resume Files
+                        </button>
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-preferences" type="button" role="tab">
+                            <i class="bi bi-sliders me-2"></i>Preferences
                         </button>
                     </div>
-                    <div id="discover-status" class="mb-2"></div>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Greenhouse Boards (<span id="gh-count">0</span>)</label>
-                    <textarea class="form-control tag-input" id="f-greenhouse" rows="3"
-                              placeholder="stripe, anthropic, databricks, airbnb, figma"></textarea>
-                    <div class="form-text">Comma-separated board tokens</div>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small">Lever Boards (<span id="lv-count">0</span>)</label>
-                    <textarea class="form-control tag-input" id="f-lever" rows="3"
-                              placeholder="netflix, lyft, discord"></textarea>
-                    <div class="form-text">Comma-separated company slugs</div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Save Bar -->
-        <div class="save-bar">
-            <div class="d-flex justify-content-between align-items-center">
-                <div id="save-status" class="text-muted small"></div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary" id="btn-save-stay" onclick="saveSetup(false)">
-                        <i class="bi bi-check-lg me-1"></i>Save
-                    </button>
-                    <button type="button" class="btn btn-primary" id="btn-save-go" onclick="saveSetup(true)">
-                        <i class="bi bi-arrow-right me-1"></i>Save & Go to Dashboard
-                    </button>
+                    <!-- Save buttons in sidebar -->
+                    <div class="mt-4 d-grid gap-2">
+                        <button type="button" class="btn btn-primary" id="btn-save-go" onclick="saveSetup(true)">
+                            <i class="bi bi-arrow-right me-1"></i>Save & Go to Dashboard
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-save-stay" onclick="saveSetup(false)">
+                            <i class="bi bi-check-lg me-1"></i>Save
+                        </button>
+                        <div id="save-status" class="text-muted small text-center mt-1"></div>
+                    </div>
                 </div>
             </div>
-        </div>
+
+            <!-- ── Tab Content ── -->
+            <div class="col-md-9">
+                <div class="tab-content">
+
+                    <!-- ────────────────────────────────────────── -->
+                    <!-- TAB: Personal Info                         -->
+                    <!-- ────────────────────────────────────────── -->
+                    <div class="tab-pane fade show active" id="tab-personal" role="tabpanel">
+                        <div class="setup-section">
+                            <div class="section-header">
+                                <h5>Personal Information</h5>
+                                <p class="text-muted small mb-0">Basic contact details used to auto-fill job applications.</p>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="f-name" required placeholder="John Doe">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Email <span class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" id="f-email" required placeholder="john@example.com">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Phone <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" id="f-phone" placeholder="(555) 000-0000">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Location <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="f-location" placeholder="City, State">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">LinkedIn</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-linkedin"></i></span>
+                                        <input type="url" class="form-control" id="f-linkedin" placeholder="https://linkedin.com/in/...">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">GitHub</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-github"></i></span>
+                                        <input type="url" class="form-control" id="f-github" placeholder="https://github.com/...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ────────────────────────────────────────── -->
+                    <!-- TAB: Career & Skills                       -->
+                    <!-- ────────────────────────────────────────── -->
+                    <div class="tab-pane fade" id="tab-career" role="tabpanel">
+                        <!-- Current Role -->
+                        <div class="setup-section">
+                            <div class="section-header">
+                                <h5>Career Profile</h5>
+                                <p class="text-muted small mb-0">Used to match you with the right roles and calibrate AI scoring.</p>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small">Current Title <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="f-current-title" placeholder="Software Engineer">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Years of Experience <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="f-yoe" min="0" max="50">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Target Job Titles <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control tag-input" id="f-target-titles"
+                                           placeholder="Software Engineer, Backend Engineer, Full Stack Engineer">
+                                    <div class="form-text">Comma-separated. The AI matches jobs against these titles.</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Professional Summary</label>
+                                    <textarea class="form-control" id="f-summary" rows="3"
+                                              placeholder="2-3 sentence summary highlighting your strongest qualifications"></textarea>
+                                    <div class="form-text">This appears in generated cover letters and helps the AI understand your profile.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Skills -->
+                        <div class="setup-section mt-3">
+                            <div class="section-header">
+                                <h5>Technical Skills</h5>
+                                <p class="text-muted small mb-0">Comma-separated. Used for AI scoring and resume tailoring.</p>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small">Languages</label>
+                                    <input type="text" class="form-control tag-input" id="f-languages" placeholder="Python, Java, TypeScript">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Frameworks</label>
+                                    <input type="text" class="form-control tag-input" id="f-frameworks" placeholder="React, Spring Boot, FastAPI">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Infrastructure / Cloud</label>
+                                    <input type="text" class="form-control tag-input" id="f-infrastructure" placeholder="AWS, Docker, Kubernetes">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Databases</label>
+                                    <input type="text" class="form-control tag-input" id="f-databases" placeholder="PostgreSQL, Redis, MongoDB">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Other</label>
+                                    <input type="text" class="form-control tag-input" id="f-other-skills" placeholder="distributed systems, system design, REST APIs">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ────────────────────────────────────────── -->
+                    <!-- TAB: Experience & Education                 -->
+                    <!-- ────────────────────────────────────────── -->
+                    <div class="tab-pane fade" id="tab-experience" role="tabpanel">
+                        <!-- Work Experience -->
+                        <div class="setup-section">
+                            <div class="section-header d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5>Work Experience</h5>
+                                    <p class="text-muted small mb-0">The AI uses these bullets to generate tailored resume content for each job.</p>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addExperienceEntry()">
+                                    <i class="bi bi-plus-lg me-1"></i>Add Role
+                                </button>
+                            </div>
+                            <div id="experience-entries"></div>
+                        </div>
+
+                        <!-- Education -->
+                        <div class="setup-section mt-3">
+                            <div class="section-header d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5>Education</h5>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addEducationEntry()">
+                                    <i class="bi bi-plus-lg me-1"></i>Add Degree
+                                </button>
+                            </div>
+                            <div id="education-entries"></div>
+                        </div>
+                    </div>
+
+                    <!-- ────────────────────────────────────────── -->
+                    <!-- TAB: Resume Files                          -->
+                    <!-- ────────────────────────────────────────── -->
+                    <div class="tab-pane fade" id="tab-resume" role="tabpanel">
+                        <!-- Raw Resume Text -->
+                        <div class="setup-section">
+                            <div class="section-header">
+                                <h5>Resume Text</h5>
+                                <p class="text-muted small mb-0">Full text version of your resume. The AI reads this when scoring and generating cover letters.</p>
+                            </div>
+                            <textarea class="form-control" id="f-resume-text" rows="8" placeholder="Paste your full resume text here, or upload a resume on the first step to auto-fill this."></textarea>
+                        </div>
+
+                        <!-- Resume Builder -->
+                        <div class="setup-section mt-3">
+                            <div class="section-header">
+                                <h5>Advanced Resume Builder</h5>
+                                <p class="text-muted small mb-0">
+                                    Powers the per-job tailored PDF resume generator. Provide detailed work
+                                    experience and a LaTeX template — the builder uses AI to create ATS-optimized
+                                    resumes customized for each job description.
+                                </p>
+                            </div>
+
+                            <div id="rb-status" class="mb-3"></div>
+
+                            <!-- Current Experience -->
+                            <div class="mb-4">
+                                <label class="form-label small fw-medium">Current Role (Markdown)</label>
+                                <p class="text-muted small mb-2">Detailed breakdown of your current job — projects, achievements, impact metrics.</p>
+                                <div class="d-flex gap-2 mb-2">
+                                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
+                                           onchange="extractFileToTextarea(this, 'rb-experience-current', 'rb-upload-status-current')" style="max-width:300px;">
+                                    <span class="small text-muted align-self-center" id="rb-upload-status-current"></span>
+                                </div>
+                                <textarea class="form-control form-control-sm" id="rb-experience-current" rows="8"
+                                          placeholder="# Current Company — Your Role&#10;&#10;## Project 1&#10;- Built X achieving Y by doing Z&#10;- Reduced latency by 40% through..."></textarea>
+                            </div>
+
+                            <!-- Previous Experiences -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <label class="form-label small fw-medium mb-0">Previous Roles</label>
+                                        <p class="text-muted small mb-0">One entry per company. Add as much detail as you want — the AI picks the best bullets.</p>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPrevExpEntry()">
+                                        <i class="bi bi-plus-lg me-1"></i>Add
+                                    </button>
+                                </div>
+                                <div id="rb-prev-exp-entries"></div>
+                            </div>
+
+                            <!-- Projects -->
+                            <div class="mb-4">
+                                <label class="form-label small fw-medium">Projects (Markdown)</label>
+                                <p class="text-muted small mb-2">Side projects, open source, etc. The AI includes these when relevant to the job.</p>
+                                <div class="d-flex gap-2 mb-2">
+                                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md"
+                                           onchange="extractFileToTextarea(this, 'rb-projects', 'rb-upload-status-projects')" style="max-width:300px;">
+                                    <span class="small text-muted align-self-center" id="rb-upload-status-projects"></span>
+                                </div>
+                                <textarea class="form-control form-control-sm" id="rb-projects" rows="5"
+                                          placeholder="# Project Name&#10;Tech: Python, AWS, React&#10;- Built agentic pipeline processing 3000 Q&A pairs..."></textarea>
+                            </div>
+
+                            <!-- Base Resume (LaTeX Template) -->
+                            <div>
+                                <label class="form-label small fw-medium">Base Resume Template</label>
+                                <p class="text-muted small mb-2">
+                                    Upload your resume (PDF, DOCX, or .tex). Non-LaTeX files are automatically
+                                    converted. This template gets tailored per job.
+                                </p>
+                                <div class="d-flex gap-2 mb-2">
+                                    <input type="file" class="form-control form-control-sm" accept=".pdf,.docx,.doc,.txt,.md,.tex"
+                                           onchange="uploadBaseResume(this)" style="max-width:300px;">
+                                    <span class="small text-muted align-self-center" id="rb-upload-status-template"></span>
+                                </div>
+                                <textarea class="form-control form-control-sm font-monospace" id="rb-template" rows="6"
+                                          placeholder="Upload a resume above to auto-generate a LaTeX template, or paste LaTeX code directly."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ────────────────────────────────────────── -->
+                    <!-- TAB: Preferences                           -->
+                    <!-- ────────────────────────────────────────── -->
+                    <div class="tab-pane fade" id="tab-preferences" role="tabpanel">
+                        <!-- Search Criteria -->
+                        <div class="setup-section">
+                            <div class="section-header">
+                                <h5>Search Criteria</h5>
+                                <p class="text-muted small mb-0">Controls which jobs the scrapers find and which pass the hard filter before AI scoring.</p>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label small">Target Roles</label>
+                                    <input type="text" class="form-control tag-input" id="f-target-roles"
+                                           placeholder="Software Engineer, Backend Engineer, Full Stack Engineer">
+                                    <div class="form-text">Comma-separated. Used as search queries across all job boards.</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Locations / Countries</label>
+                                    <input type="text" class="form-control tag-input" id="f-locations"
+                                           placeholder="United States, Canada, Remote">
+                                    <div class="form-text">Leave empty to search all locations.</div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Blacklisted Companies</label>
+                                    <input type="text" class="form-control tag-input" id="f-blacklist"
+                                           placeholder="Company A, Company B">
+                                    <div class="form-text">Jobs from these companies are automatically skipped.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filters -->
+                        <div class="setup-section mt-3">
+                            <div class="section-header">
+                                <h5>Filters</h5>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">Minimum Salary ($)</label>
+                                    <input type="number" class="form-control" id="f-min-salary" placeholder="130000">
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" id="f-visa">
+                                        <label class="form-check-label small" for="f-visa">Visa Sponsorship Required</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" id="f-remote-only">
+                                        <label class="form-check-label small" for="f-remote-only">Remote Only</label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small">Seniority Levels</label>
+                                    <div class="d-flex gap-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="f-seniority-entry" value="entry-level">
+                                            <label class="form-check-label small" for="f-seniority-entry">Entry Level</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="f-seniority-mid" value="mid">
+                                            <label class="form-check-label small" for="f-seniority-mid">Mid</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="f-seniority-senior" value="senior">
+                                            <label class="form-check-label small" for="f-seniority-senior">Senior</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Job Boards -->
+                        <div class="setup-section mt-3">
+                            <div class="section-header d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5>Job Boards</h5>
+                                    <p class="text-muted small mb-0">Company career page tokens. The scraper fetches open roles from each board.</p>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="discoverBoards()">
+                                    <i class="bi bi-search me-1"></i>Auto-Discover Boards
+                                </button>
+                            </div>
+                            <div id="discover-status" class="mb-2"></div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small">Greenhouse Boards (<span id="gh-count">0</span>)</label>
+                                    <textarea class="form-control tag-input" id="f-greenhouse" rows="4"
+                                              placeholder="stripe, anthropic, databricks, airbnb, figma" oninput="updateBoardCounts()"></textarea>
+                                    <div class="form-text">Comma-separated board tokens</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Lever Boards (<span id="lv-count">0</span>)</label>
+                                    <textarea class="form-control tag-input" id="f-lever" rows="4"
+                                              placeholder="netflix, lyft, discord" oninput="updateBoardCounts()"></textarea>
+                                    <div class="form-text">Comma-separated company slugs</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small">Ashby Boards (<span id="ab-count">0</span>)</label>
+                                    <textarea class="form-control tag-input" id="f-ashby" rows="4"
+                                              placeholder="notion, ramp, browserbase, watershed" oninput="updateBoardCounts()"></textarea>
+                                    <div class="form-text">Comma-separated company slugs</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /tab-content -->
+            </div><!-- /col-md-9 -->
+        </div><!-- /row -->
 
     </form>
 </div>
@@ -433,7 +495,7 @@
 // ---------------------------------------------------------------------------
 let expCounter = 0;
 let eduCounter = 0;
-let profileFromAI = false; // true if profile was parsed from resume
+let profileFromAI = false;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -494,7 +556,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) {}
 });
 
-// "Edit existing profile" — load saved data and jump to form
 async function editExisting() {
     setStep(2);
     document.getElementById('parse-status').textContent = 'Loading saved profile...';
@@ -510,7 +571,6 @@ async function editExisting() {
     }
 }
 
-// "Fill manually" — load defaults and jump to form
 async function skipToForm() {
     setStep(2);
     document.getElementById('parse-status').textContent = 'Loading defaults...';
@@ -518,7 +578,6 @@ async function skipToForm() {
         const resp = await fetch('/api/profile/full');
         const data = await resp.json();
         fillForm(data.profile || {}, data.preferences || {});
-        // Clear profile fields so user fills them (keep preferences as defaults)
         if (!data.exists) {
             document.getElementById('f-name').value = '';
             document.getElementById('f-email').value = '';
@@ -564,7 +623,6 @@ async function uploadResume(file) {
         return;
     }
 
-    // Move to step 2 (parsing spinner)
     setStep(2);
     document.getElementById('parse-status').textContent = `Extracting text from ${file.name}...`;
 
@@ -586,7 +644,6 @@ async function uploadResume(file) {
             return;
         }
 
-        // Load default preferences for the preferences section
         let prefs = {};
         try {
             const prefsResp = await fetch('/api/profile/full');
@@ -594,17 +651,14 @@ async function uploadResume(file) {
             prefs = prefsData.preferences || {};
         } catch(e) {}
 
-        // Fill the form with AI-parsed profile + default preferences
         profileFromAI = true;
         fillForm(data.profile, prefs);
         document.getElementById('f-resume-text').value = data.raw_text || '';
 
-        // Show success banner
         document.getElementById('parse-banner').style.display = 'flex !important';
         document.getElementById('parse-banner').style.cssText = 'display: flex !important;';
         document.getElementById('save-status').textContent = 'Parsed from resume — review and save';
 
-        // Highlight AI-filled fields that have values
         highlightFilledFields();
 
         showToast('Resume parsed! Review the fields below.', 'success');
@@ -617,7 +671,6 @@ async function uploadResume(file) {
 }
 
 function highlightFilledFields() {
-    // Briefly highlight fields that were filled by AI
     const fields = ['f-name','f-email','f-phone','f-location','f-linkedin','f-github',
                     'f-current-title','f-yoe','f-summary','f-languages','f-frameworks',
                     'f-infrastructure','f-databases','f-other-skills','f-target-titles'];
@@ -634,7 +687,6 @@ function highlightFilledFields() {
 // Fill form from profile + preferences data
 // ---------------------------------------------------------------------------
 function fillForm(p, prefs) {
-    // Basic info
     document.getElementById('f-name').value = p.name || '';
     document.getElementById('f-email').value = p.email || '';
     document.getElementById('f-phone').value = p.phone || '';
@@ -645,10 +697,8 @@ function fillForm(p, prefs) {
     document.getElementById('f-yoe').value = p.years_of_experience || '';
     document.getElementById('f-target-titles').value = arrayToCsv(p.target_titles);
 
-    // Summary
     document.getElementById('f-summary').value = p.summary || '';
 
-    // Skills
     const skills = p.skills || {};
     document.getElementById('f-languages').value = arrayToCsv(skills.languages);
     document.getElementById('f-frameworks').value = arrayToCsv(skills.frameworks);
@@ -656,7 +706,6 @@ function fillForm(p, prefs) {
     document.getElementById('f-databases').value = arrayToCsv(skills.databases);
     document.getElementById('f-other-skills').value = arrayToCsv(skills.other);
 
-    // Experience — clear existing entries and add new ones
     document.getElementById('experience-entries').innerHTML = '';
     expCounter = 0;
     const experience = p.experience || [];
@@ -666,7 +715,6 @@ function fillForm(p, prefs) {
         addExperienceEntry();
     }
 
-    // Education
     document.getElementById('education-entries').innerHTML = '';
     eduCounter = 0;
     const education = p.education || [];
@@ -676,15 +724,12 @@ function fillForm(p, prefs) {
         addEducationEntry();
     }
 
-    // Raw resume text
     if (p.raw_resume_text) {
         document.getElementById('f-resume-text').value = p.raw_resume_text;
     }
 
-    // Load resume builder files
     loadResumeBuilderFiles();
 
-    // Preferences
     document.getElementById('f-target-roles').value = arrayToCsv(prefs.target_roles);
     document.getElementById('f-locations').value = arrayToCsv(prefs.locations);
     document.getElementById('f-blacklist').value = arrayToCsv(prefs.blacklist_companies);
@@ -693,6 +738,7 @@ function fillForm(p, prefs) {
     document.getElementById('f-remote-only').checked = prefs.remote_only || false;
     document.getElementById('f-greenhouse').value = arrayToCsv(prefs.greenhouse_boards);
     document.getElementById('f-lever').value = arrayToCsv(prefs.lever_boards);
+    document.getElementById('f-ashby').value = arrayToCsv(prefs.ashby_boards || []);
     updateBoardCounts();
 
     const seniority = prefs.seniority_levels || [];
@@ -779,7 +825,6 @@ async function saveSetup(goToDashboard = false) {
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
-    // Collect experience
     const experience = [];
     document.querySelectorAll('#experience-entries .dynamic-entry').forEach(entry => {
         const title = entry.querySelector('[data-field="title"]').value.trim();
@@ -793,7 +838,6 @@ async function saveSetup(goToDashboard = false) {
         }
     });
 
-    // Collect education
     const education = [];
     document.querySelectorAll('#education-entries .dynamic-entry').forEach(entry => {
         const degree = entry.querySelector('[data-field="degree"]').value.trim();
@@ -802,7 +846,6 @@ async function saveSetup(goToDashboard = false) {
         if (degree || school) education.push({ degree, school, year });
     });
 
-    // Seniority
     const seniority = [];
     if (document.getElementById('f-seniority-entry').checked) seniority.push('entry-level');
     if (document.getElementById('f-seniority-mid').checked) seniority.push('mid');
@@ -841,6 +884,7 @@ async function saveSetup(goToDashboard = false) {
         visa_sponsorship_required: document.getElementById('f-visa').checked,
         greenhouse_boards: csvToArray(document.getElementById('f-greenhouse').value),
         lever_boards: csvToArray(document.getElementById('f-lever').value),
+        ashby_boards: csvToArray(document.getElementById('f-ashby').value),
     };
 
     try {
@@ -854,7 +898,6 @@ async function saveSetup(goToDashboard = false) {
         if (!resp.ok) {
             showToast(data.error || 'Save failed', 'error');
         } else {
-            // Also save resume builder files
             await saveResumeBuilderFiles();
 
             if (goToDashboard) {
@@ -888,7 +931,6 @@ async function loadResumeBuilderFiles() {
         document.getElementById('rb-projects').value = files.projects || '';
         document.getElementById('rb-template').value = files.template || '';
 
-        // Load previous experiences (multiple)
         const container = document.getElementById('rb-prev-exp-entries');
         container.innerHTML = '';
         prevExpCounter = 0;
@@ -899,18 +941,15 @@ async function loadResumeBuilderFiles() {
             addPrevExpEntry('');
         }
 
-        // Show status
         const status = data.status || {};
         const statusEl = document.getElementById('rb-status');
         if (status.ready) {
-            statusEl.innerHTML = '<div class="alert alert-success py-2 small"><i class="bi bi-check-circle me-1"></i>Resume builder ready — all input files configured</div>';
+            statusEl.innerHTML = '<div class="alert alert-success py-2 small"><i class="bi bi-check-circle me-1"></i>Resume builder ready</div>';
         } else {
             const issues = (status.issues || []).map(i => `<li>${i}</li>`).join('');
             statusEl.innerHTML = `<div class="alert alert-warning py-2 small"><i class="bi bi-exclamation-triangle me-1"></i>Resume builder needs setup:<ul class="mb-0 mt-1">${issues}</ul></div>`;
         }
-    } catch(e) {
-        // Silent
-    }
+    } catch(e) { /* silent */ }
 }
 
 function addPrevExpEntry(content) {
@@ -937,7 +976,6 @@ function addPrevExpEntry(content) {
 function removePrevExpEntry(id) {
     const el = document.getElementById(id);
     if (el) el.remove();
-    // Ensure at least one entry remains
     const container = document.getElementById('rb-prev-exp-entries');
     if (container.children.length === 0) addPrevExpEntry('');
 }
@@ -949,7 +987,6 @@ async function saveResumeBuilderFiles() {
         template: document.getElementById('rb-template').value,
     };
 
-    // Collect all previous experience entries
     const previousExperiences = [];
     document.querySelectorAll('#rb-prev-exp-entries .dynamic-entry').forEach(entry => {
         const textarea = entry.querySelector('textarea');
@@ -958,7 +995,6 @@ async function saveResumeBuilderFiles() {
         }
     });
 
-    // Only save if at least one field has content
     const hasContent = Object.values(files).some(v => v.trim()) || previousExperiences.length > 0;
     if (hasContent) {
         try {
@@ -967,9 +1003,7 @@ async function saveResumeBuilderFiles() {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({files, previous_experiences: previousExperiences})
             });
-        } catch(e) {
-            // Silent
-        }
+        } catch(e) { /* silent */ }
     }
 }
 
@@ -1012,7 +1046,7 @@ async function extractFileToTextarea(input, textareaId, statusId) {
 
 async function discoverBoards() {
     const statusEl = document.getElementById('discover-status');
-    statusEl.innerHTML = '<div class="alert alert-info py-2 small"><span class="spinner-border spinner-border-sm me-1"></span>Scanning 200+ tech companies for Greenhouse and Lever boards... this takes ~1 minute</div>';
+    statusEl.innerHTML = '<div class="alert alert-info py-2 small"><span class="spinner-border spinner-border-sm me-1"></span>Scanning 250+ tech companies for Greenhouse, Lever, and Ashby boards...</div>';
 
     try {
         const resp = await fetch('/api/discover-boards', {method: 'POST'});
@@ -1021,7 +1055,6 @@ async function discoverBoards() {
             return;
         }
 
-        // Poll progress via SSE
         const evtSource = new EventSource('/api/discover-boards/progress');
         evtSource.onmessage = (e) => {
             const data = JSON.parse(e.data);
@@ -1030,21 +1063,21 @@ async function discoverBoards() {
             if (data.status === 'done') {
                 evtSource.close();
                 const results = data.results;
-                if (!results || (results.new_greenhouse.length === 0 && results.new_lever.length === 0)) {
+                const newAshby = results.new_ashby || [];
+                if (results.new_greenhouse.length === 0 && results.new_lever.length === 0 && newAshby.length === 0) {
                     statusEl.innerHTML = '<div class="alert alert-secondary py-2 small">No new boards found — you already have good coverage!</div>';
                     return;
                 }
 
-                // Show results with "Add All" button
                 let html = `<div class="alert alert-success py-2 small">
-                    Found <strong>${results.new_greenhouse.length}</strong> new Greenhouse and
-                    <strong>${results.new_lever.length}</strong> new Lever boards!
+                    Found <strong>${results.new_greenhouse.length}</strong> Greenhouse,
+                    <strong>${results.new_lever.length}</strong> Lever, and
+                    <strong>${newAshby.length}</strong> Ashby boards!
                     <button class="btn btn-sm btn-success ms-2" onclick="applyDiscoveredBoards()">
                         <i class="bi bi-plus-lg me-1"></i>Add All to Preferences
                     </button>
                 </div>`;
 
-                // Store results for apply
                 window._discoveredBoards = results;
                 statusEl.innerHTML = html;
             }
@@ -1065,16 +1098,16 @@ async function applyDiscoveredBoards() {
 
     const ghSlugs = results.new_greenhouse.map(b => b.slug);
     const lvSlugs = results.new_lever.map(b => b.slug);
+    const abSlugs = (results.new_ashby || []).map(b => b.slug);
 
     try {
         const resp = await fetch('/api/discover-boards/apply', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({greenhouse: ghSlugs, lever: lvSlugs})
+            body: JSON.stringify({greenhouse: ghSlugs, lever: lvSlugs, ashby: abSlugs})
         });
         const data = await resp.json();
 
-        // Update the textareas
         const ghField = document.getElementById('f-greenhouse');
         const lvField = document.getElementById('f-lever');
         const currentGh = csvToArray(ghField.value);
@@ -1096,8 +1129,10 @@ async function applyDiscoveredBoards() {
 function updateBoardCounts() {
     const gh = csvToArray(document.getElementById('f-greenhouse').value);
     const lv = csvToArray(document.getElementById('f-lever').value);
+    const ab = csvToArray(document.getElementById('f-ashby').value);
     document.getElementById('gh-count').textContent = gh.length;
     document.getElementById('lv-count').textContent = lv.length;
+    document.getElementById('ab-count').textContent = ab.length;
 }
 
 async function uploadBaseResume(input) {
@@ -1107,7 +1142,6 @@ async function uploadBaseResume(input) {
     const statusEl = document.getElementById('rb-upload-status-template');
     const filename = file.name.toLowerCase();
 
-    // If it's a .tex file, just read and fill
     if (filename.endsWith('.tex')) {
         try {
             const text = await file.text();
@@ -1121,7 +1155,6 @@ async function uploadBaseResume(input) {
         return;
     }
 
-    // For PDF/DOCX/TXT — upload, extract text, convert to LaTeX via AI
     statusEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Converting to LaTeX...';
     statusEl.className = 'small text-primary align-self-center';
 

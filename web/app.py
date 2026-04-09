@@ -670,12 +670,14 @@ def api_discover_boards():
             results = discover_boards_sync(
                 existing_greenhouse=prefs.get("greenhouse_boards", []),
                 existing_lever=prefs.get("lever_boards", []),
+                existing_ashby=prefs.get("ashby_boards", []),
                 progress_callback=progress_cb,
             )
             _discover_progress["results"] = results
             _discover_progress["message"] = (
-                f"Found {len(results['new_greenhouse'])} new Greenhouse "
-                f"and {len(results['new_lever'])} new Lever boards"
+                f"Found {len(results['new_greenhouse'])} Greenhouse, "
+                f"{len(results['new_lever'])} Lever, "
+                f"{len(results.get('new_ashby', []))} Ashby boards"
             )
         except Exception as e:
             _discover_progress["message"] = f"Error: {e}"
@@ -707,25 +709,31 @@ def api_apply_discovered_boards():
     data = request.get_json()
     greenhouse_slugs = data.get("greenhouse", [])
     lever_slugs = data.get("lever", [])
+    ashby_slugs = data.get("ashby", [])
 
     prefs = load_preferences()
 
     existing_gh = set(prefs.get("greenhouse_boards", []))
     existing_lv = set(prefs.get("lever_boards", []))
+    existing_ab = set(prefs.get("ashby_boards", []))
 
     added_gh = [s for s in greenhouse_slugs if s not in existing_gh]
     added_lv = [s for s in lever_slugs if s not in existing_lv]
+    added_ab = [s for s in ashby_slugs if s not in existing_ab]
 
     prefs["greenhouse_boards"] = list(existing_gh | set(added_gh))
     prefs["lever_boards"] = list(existing_lv | set(added_lv))
+    prefs["ashby_boards"] = list(existing_ab | set(added_ab))
     save_preferences(prefs)
 
     return jsonify({
         "status": "ok",
         "added_greenhouse": len(added_gh),
         "added_lever": len(added_lv),
+        "added_ashby": len(added_ab),
         "total_greenhouse": len(prefs["greenhouse_boards"]),
         "total_lever": len(prefs["lever_boards"]),
+        "total_ashby": len(prefs["ashby_boards"]),
     })
 
 

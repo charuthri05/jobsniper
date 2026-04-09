@@ -135,6 +135,21 @@ async def _check_greenhouse(client: httpx.AsyncClient, slug: str) -> dict | None
     return None
 
 
+async def _check_ashby(client: httpx.AsyncClient, slug: str) -> dict | None:
+    """Check if an Ashby board exists and has jobs."""
+    url = f"https://api.ashbyhq.com/posting-api/job-board/{slug}"
+    try:
+        resp = await client.get(url)
+        if resp.status_code == 200:
+            data = resp.json()
+            job_count = len(data.get("jobs", []))
+            if job_count > 0:
+                return {"slug": slug, "ats": "ashby", "jobs": job_count}
+    except Exception:
+        pass
+    return None
+
+
 async def _check_lever(client: httpx.AsyncClient, slug: str) -> dict | None:
     """Check if a Lever board exists and has jobs."""
     url = f"https://api.lever.co/v0/postings/{slug}?mode=json"
@@ -153,23 +168,19 @@ async def discover_boards(
     companies: list[str] | None = None,
     existing_greenhouse: list[str] | None = None,
     existing_lever: list[str] | None = None,
+    existing_ashby: list[str] | None = None,
     progress_callback=None,
 ) -> dict:
     """
-    Discover Greenhouse and Lever boards from a list of company names.
-
-    Args:
-        companies: List of company names to check. Defaults to TECH_COMPANIES.
-        existing_greenhouse: Already known Greenhouse slugs (to skip).
-        existing_lever: Already known Lever slugs (to skip).
-        progress_callback: Optional function(message) for progress updates.
+    Discover Greenhouse, Lever, and Ashby boards from a list of company names.
 
     Returns:
-        dict with: new_greenhouse, new_lever, total_checked, total_found
+        dict with: new_greenhouse, new_lever, new_ashby, total_checked, total_found
     """
     companies = companies or TECH_COMPANIES
     existing_greenhouse = set(s.lower() for s in (existing_greenhouse or []))
     existing_lever = set(s.lower() for s in (existing_lever or []))
+    existing_ashby = set(s.lower() for s in (existing_ashby or []))
 
     def update(msg):
         logger.info(msg)
@@ -182,62 +193,68 @@ async def discover_boards(
         for slug in _generate_slugs(company):
             all_slugs.add(slug)
 
-    # Remove already known
-    all_slugs -= existing_greenhouse
-    all_slugs -= existing_lever
+    # Remove already known across all ATS
+    known = existing_greenhouse | existing_lever | existing_ashby
+    slugs_to_check = all_slugs - known
 
-    update(f"Checking {len(all_slugs)} potential slugs from {len(companies)} companies...")
+    update(f"Checking {len(slugs_to_check)} potential slugs from {len(companies)} companies...")
 
     new_greenhouse = []
     new_lever = []
+    new_ashby = []
     checked = 0
 
     async with httpx.AsyncClient(
         timeout=10,
         limits=httpx.Limits(max_connections=30, max_keepalive_connections=10),
     ) as client:
-        # Check in batches to avoid overwhelming the APIs
-        slug_list = list(all_slugs)
+        slug_list = list(slugs_to_check)
         batch_size = 50
 
         for i in range(0, len(slug_list), batch_size):
             batch = slug_list[i:i + batch_size]
 
-            # Check both Greenhouse and Lever for each slug
+            # Check Greenhouse, Lever, AND Ashby for each slug
             tasks = []
             for slug in batch:
-                if slug not in existing_greenhouse:
-                    tasks.append(_check_greenhouse(client, slug))
-                if slug not in existing_lever:
-                    tasks.append(_check_lever(client, slug))
+                tasks.append(_check_greenhouse(client, slug))
+                tasks.append(_check_lever(client, slug))
+                tasks.append(_check_ashby(client, slug))
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             for result in results:
                 if isinstance(result, Exception) or result is None:
                     continue
-                if result["ats"] == "greenhouse":
+                if result["ats"] == "greenhouse" and result["slug"] not in existing_greenhouse:
                     new_greenhouse.append(result)
                     existing_greenhouse.add(result["slug"])
                     update(f"  Found Greenhouse: {result['slug']} ({result['jobs']} jobs)")
-                else:
+                elif result["ats"] == "lever" and result["slug"] not in existing_lever:
                     new_lever.append(result)
                     existing_lever.add(result["slug"])
                     update(f"  Found Lever: {result['slug']} ({result['jobs']} jobs)")
+                elif result["ats"] == "ashby" and result["slug"] not in existing_ashby:
+                    new_ashby.append(result)
+                    existing_ashby.add(result["slug"])
+                    update(f"  Found Ashby: {result['slug']} ({result['jobs']} jobs)")
 
             checked += len(batch)
             update(f"Progress: {checked}/{len(slug_list)} slugs checked...")
 
-            # Small delay between batches
             await asyncio.sleep(0.5)
 
-    update(f"Discovery complete: {len(new_greenhouse)} new Greenhouse, {len(new_lever)} new Lever boards")
+    update(
+        f"Discovery complete: {len(new_greenhouse)} Greenhouse, "
+        f"{len(new_lever)} Lever, {len(new_ashby)} Ashby"
+    )
 
     return {
         "new_greenhouse": sorted(new_greenhouse, key=lambda x: x["jobs"], reverse=True),
         "new_lever": sorted(new_lever, key=lambda x: x["jobs"], reverse=True),
+        "new_ashby": sorted(new_ashby, key=lambda x: x["jobs"], reverse=True),
         "total_checked": checked,
-        "total_found": len(new_greenhouse) + len(new_lever),
+        "total_found": len(new_greenhouse) + len(new_lever) + len(new_ashby),
     }
 
 
@@ -245,6 +262,7 @@ def discover_boards_sync(
     companies: list[str] | None = None,
     existing_greenhouse: list[str] | None = None,
     existing_lever: list[str] | None = None,
+    existing_ashby: list[str] | None = None,
     progress_callback=None,
 ) -> dict:
     """Synchronous wrapper for discover_boards."""
@@ -258,10 +276,10 @@ def discover_boards_sync(
         with concurrent.futures.ThreadPoolExecutor() as pool:
             future = pool.submit(
                 asyncio.run,
-                discover_boards(companies, existing_greenhouse, existing_lever, progress_callback),
+                discover_boards(companies, existing_greenhouse, existing_lever, existing_ashby, progress_callback),
             )
             return future.result()
     else:
         return asyncio.run(
-            discover_boards(companies, existing_greenhouse, existing_lever, progress_callback)
+            discover_boards(companies, existing_greenhouse, existing_lever, existing_ashby, progress_callback)
         )
