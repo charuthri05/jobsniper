@@ -5,10 +5,25 @@ body {
     background: #f8f9fa;
 }
 
+/* Sticky action bar (tabs + buttons) */
+.action-bar {
+    position: sticky;
+    top: 56px; /* below navbar */
+    z-index: 20;
+    background: #f8f9fa;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
 /* Sticky table header */
 .sticky-header th {
     position: sticky;
-    top: 0;
+    top: 112px; /* below navbar + action bar */
     z-index: 10;
     background: #f8f9fa;
     border-bottom: 2px solid #dee2e6;
