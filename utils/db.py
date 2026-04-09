@@ -146,7 +146,7 @@ def get_jobs_by_status(status: str) -> list[dict]:
     conn = get_connection()
     try:
         rows = conn.execute(
-            "SELECT * FROM jobs WHERE status = ? ORDER BY score DESC NULLS LAST, date_scraped DESC",
+            "SELECT * FROM jobs WHERE status = ? ORDER BY date_scraped DESC, score DESC",
             (status,),
         ).fetchall()
         return [dict(row) for row in rows]
@@ -261,7 +261,7 @@ def get_queued_without_cl() -> list[dict]:
     try:
         rows = conn.execute(
             "SELECT * FROM jobs WHERE status = 'queued' AND (cover_letter IS NULL OR cover_letter = '') "
-            "ORDER BY score DESC, date_scraped DESC"
+            "ORDER BY date_scraped DESC, score DESC"
         ).fetchall()
         return [dict(row) for row in rows]
     finally:
@@ -274,7 +274,7 @@ def get_queued_with_cl() -> list[dict]:
     try:
         rows = conn.execute(
             "SELECT * FROM jobs WHERE status = 'queued' AND cover_letter IS NOT NULL AND cover_letter != '' "
-            "ORDER BY score DESC, date_scraped DESC"
+            "ORDER BY date_scraped DESC, score DESC"
         ).fetchall()
         return [dict(row) for row in rows]
     finally:
