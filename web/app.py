@@ -646,6 +646,47 @@ def api_scrape_progress():
     return Response(stream(), mimetype="text/event-stream")
 
 
+@app.route("/api/jobs/add-by-url", methods=["POST"])
+def api_add_job_by_url():
+    """Fetch a job posting from any URL, extract details, add to DB."""
+    data = request.get_json()
+    url = (data.get("url") or "").strip()
+
+    if not url:
+        return jsonify({"error": "URL is required"}), 400
+
+    # Check if URL already exists
+    from utils.db import url_exists, insert_job
+    if url_exists(url) or url_exists("https://" + url.lstrip("https://").lstrip("http://")):
+        return jsonify({"error": "This job URL is already in your database"}), 409
+
+    try:
+        from pipeline.job_fetcher import fetch_job_from_url
+        result = fetch_job_from_url(url)
+
+        if not result["success"]:
+            return jsonify({"error": result["error"]}), 400
+
+        job = result["job"]
+        inserted = insert_job(job)
+        if not inserted:
+            return jsonify({"error": "Job already exists in database"}), 409
+
+        return jsonify({
+            "status": "ok",
+            "job": {
+                "id": job["id"],
+                "title": job["title"],
+                "company": job["company"],
+                "location": job.get("location", ""),
+                "url": job["url"],
+            }
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/tasks/status")
 def api_tasks_status():
     """Return the running/idle status of all background tasks.

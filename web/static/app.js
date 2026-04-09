@@ -1184,6 +1184,73 @@ function dismissApplyPrompt() {
 }
 
 // ---------------------------------------------------------------------------
+// Add Job by URL
+// ---------------------------------------------------------------------------
+
+function showAddJobModal() {
+    document.getElementById('add-job-url').value = '';
+    document.getElementById('add-job-status').innerHTML = '';
+    document.getElementById('btn-add-job').disabled = false;
+    document.getElementById('btn-add-job').innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Job';
+    new bootstrap.Modal(document.getElementById('addJobModal')).show();
+    setTimeout(() => document.getElementById('add-job-url').focus(), 300);
+}
+
+async function addJobByUrl() {
+    const url = document.getElementById('add-job-url').value.trim();
+    if (!url) {
+        document.getElementById('add-job-status').innerHTML = '<span class="text-danger">Please enter a URL</span>';
+        return;
+    }
+
+    const btn = document.getElementById('btn-add-job');
+    const status = document.getElementById('add-job-status');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Fetching...';
+    status.innerHTML = '<span class="text-primary"><span class="spinner-border spinner-border-sm me-1"></span>Fetching page and extracting job details...</span>';
+
+    try {
+        const resp = await fetch('/api/jobs/add-by-url', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url})
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            status.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>${data.error}</span>`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Job';
+            return;
+        }
+
+        const job = data.job;
+        status.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Added: <strong>${escapeHtml(job.title)}</strong> at ${escapeHtml(job.company)}</span>`;
+
+        // Close modal after brief delay and refresh
+        setTimeout(() => {
+            bootstrap.Modal.getInstance(document.getElementById('addJobModal')).hide();
+            showToast(`Added: ${job.title} at ${job.company}`, 'success');
+            loadJobs(currentTab);
+            loadStats();
+        }, 1500);
+
+    } catch(e) {
+        status.innerHTML = `<span class="text-danger">Failed: ${e.message}</span>`;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Job';
+    }
+}
+
+// Allow Enter key to submit
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && document.getElementById('addJobModal').classList.contains('show')) {
+        e.preventDefault();
+        addJobByUrl();
+    }
+});
+
+// ---------------------------------------------------------------------------
 // Scrape Jobs
 // ---------------------------------------------------------------------------
 
