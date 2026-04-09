@@ -630,7 +630,7 @@ async function generateResumes() {
 
     const modeLabel = resumeMode === 'fast' ? 'Fast (Plan + Execute)' : 'Thorough (Plan + Review + Execute)';
     showConfirm(`Generate ${modeLabel} resumes for ${ids.length} job(s)?`, async () => {
-        lastResumeGeneratedIds = [...ids];
+        lastResumeGeneratedIds = [...lastResumeGeneratedIds, ...ids];
 
         try {
             const resp = await fetch('/api/generate-resumes', {
@@ -639,14 +639,19 @@ async function generateResumes() {
                 body: JSON.stringify({job_ids: ids, mode: resumeMode})
             });
 
-            if (resp.status === 409) {
-                showToast('Resume generation already in progress', 'warning');
+            if (!resp.ok) {
+                const data = await resp.json();
+                showToast(data.error || 'Failed to start', 'error');
                 return;
             }
 
-            document.getElementById('progress-container').style.display = 'block';
-            document.getElementById('btn-generate-resumes').disabled = true;
+            showToast(`${ids.length} resume(s) generating in background...`, 'success');
 
+            // Show progress bar
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('progress-label').textContent = 'Generating resumes...';
+
+            // Start SSE for overall progress
             const evtSource = new EventSource('/api/generate-resumes/progress');
             evtSource.onmessage = (e) => {
                 const data = JSON.parse(e.data);
@@ -656,24 +661,27 @@ async function generateResumes() {
                 document.getElementById('progress-count').textContent = `${data.current}/${data.total}`;
                 document.getElementById('progress-detail').textContent = data.message;
                 document.getElementById('progress-label').textContent =
-                    data.status === 'done' ? 'Complete' : 'Generating tailored resumes...';
+                    data.status === 'done' ? 'Complete' : 'Generating resumes...';
+
+                // Refresh table periodically to show new download icons
+                if (data.current > 0) {
+                    loadJobs(currentTab);
+                }
 
                 if (data.status === 'done') {
                     evtSource.close();
                     setTimeout(() => {
                         document.getElementById('progress-container').style.display = 'none';
-                        document.getElementById('btn-generate-resumes').disabled = false;
                         loadJobs(currentTab);
                         loadStats();
-                        showResumeResults(lastResumeGeneratedIds);
-                    }, 1500);
+                        showToast(data.message, 'success');
+                    }, 1000);
                 }
             };
 
             evtSource.onerror = () => {
                 evtSource.close();
                 document.getElementById('progress-container').style.display = 'none';
-                document.getElementById('btn-generate-resumes').disabled = false;
                 loadJobs(currentTab);
                 loadStats();
             };

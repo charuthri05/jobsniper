@@ -922,16 +922,20 @@ def api_generate():
     return jsonify({"status": "started", "total": len(job_ids)})
 
 
-# Track resume generation progress
+# Track per-job resume generation status
+# Key: job_id, Value: {status, message, stage}
+_resume_jobs = {}
+_resume_jobs_lock = threading.Lock()
+
+# Overall resume progress for SSE (backward compat with progress bar)
 _resume_progress = {"current": 0, "total": 0, "status": "idle", "message": ""}
 
 
 @app.route("/api/generate-resumes", methods=["POST"])
 def api_generate_resumes():
-    """Generate tailored resume PDFs via Claude CLI. Two modes:
-    - fast: Plan → Execute (skip Reviewer)
-    - thorough: Plan → Review → Execute (all 3 stages)
-    """
+    """Generate tailored resume PDFs in parallel. Non-blocking — can be called
+    multiple times while previous jobs are still generating."""
+    from concurrent.futures import ThreadPoolExecutor
     data = request.get_json()
     job_ids = data.get("job_ids", [])
     mode = data.get("mode", "fast")
@@ -939,76 +943,85 @@ def api_generate_resumes():
     if not job_ids:
         return jsonify({"error": "No jobs selected"}), 400
 
-    if _resume_progress["status"] == "running":
-        return jsonify({"error": "Resume generation already in progress"}), 409
+    # Check builder readiness once
+    from pipeline.resume_builder_bridge import check_builder_ready
+    builder_status = check_builder_ready()
+    if not builder_status["ready"]:
+        return jsonify({"error": "Resume builder not ready. Set up experience files and base resume in Settings."}), 400
 
-    steps_per_job = 3 if mode == "thorough" else 2  # stages + compile
+    # Mark all jobs as generating
+    with _resume_jobs_lock:
+        for jid in job_ids:
+            _resume_jobs[jid] = {"status": "generating", "message": "Queued...", "stage": 0}
+
+    # Update overall progress
     _resume_progress["current"] = 0
-    _resume_progress["total"] = len(job_ids) * steps_per_job
+    _resume_progress["total"] = len(job_ids)
     _resume_progress["status"] = "running"
-    _resume_progress["message"] = "Starting..."
+    _resume_progress["message"] = f"Generating {len(job_ids)} resume(s) in parallel..."
 
-    def run_resume_generation():
-        from pipeline.resume_builder_bridge import generate_resume, check_builder_ready
+    def generate_one(job_id):
+        from pipeline.resume_builder_bridge import generate_resume
+        job = get_job_by_id(job_id)
+        if not job:
+            with _resume_jobs_lock:
+                _resume_jobs[job_id] = {"status": "error", "message": "Job not found"}
+            return False
 
-        builder_status = check_builder_ready()
-        builder_ready = builder_status["ready"]
+        with _resume_jobs_lock:
+            _resume_jobs[job_id]["message"] = f"Starting: {job['title']} at {job['company']}"
 
-        if not builder_ready:
-            _resume_progress["message"] = (
-                "Resume builder not ready. "
-                "Set up experience files and base resume in Settings."
-            )
-            _resume_progress["status"] = "done"
-            return
+        def progress_cb(msg):
+            with _resume_jobs_lock:
+                _resume_jobs[job_id]["message"] = msg
+            _resume_progress["message"] = f"{job['title']}: {msg}"
 
-        generated = 0
-        errors = 0
+        try:
+            skip_review = (mode == "fast")
+            result = generate_resume(job, progress_callback=progress_cb, skip_review=skip_review)
 
-        for i, job_id in enumerate(job_ids):
-            job = get_job_by_id(job_id)
-            if not job:
-                _resume_progress["current"] = (i + 1) * steps_per_job
-                continue
-
-            base_step = i * steps_per_job
-
-            def progress_cb(msg, _base=base_step):
-                # Advance bar based on stage keywords
-                if "Stage 1" in msg and "done" in msg:
-                    _resume_progress["current"] = _base + 1
-                elif "Stage 2" in msg and "done" in msg:
-                    _resume_progress["current"] = _base + 2
-                elif "Stage 3" in msg and "done" in msg:
-                    _resume_progress["current"] = _base + (3 if steps_per_job > 2 else 2)
-                elif "Compiling" in msg or "saved" in msg:
-                    _resume_progress["current"] = (i + 1) * steps_per_job
-                _resume_progress["message"] = f"[{i+1}/{len(job_ids)}] {msg}"
-
-            try:
-                skip_review = (mode == "fast")
-                result = generate_resume(job, progress_callback=progress_cb, skip_review=skip_review)
-
+            with _resume_jobs_lock:
                 if result.get("success"):
-                    generated += 1
+                    _resume_jobs[job_id] = {"status": "done", "message": "Ready to download"}
                 else:
-                    errors += 1
-                    _resume_progress["message"] = f"Error: {result.get('error', 'unknown')}"
+                    _resume_jobs[job_id] = {"status": "error", "message": result.get("error", "unknown")}
 
-            except Exception as e:
-                errors += 1
-                _resume_progress["message"] = f"Error: {e}"
+            return result.get("success", False)
+        except Exception as e:
+            with _resume_jobs_lock:
+                _resume_jobs[job_id] = {"status": "error", "message": str(e)}
+            return False
 
-            _resume_progress["current"] = (i + 1) * steps_per_job
+    def run_all():
+        generated = 0
+        # Run up to 3 in parallel (Anthropic API can handle concurrent calls)
+        max_workers = min(3, len(job_ids))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(generate_one, jid): jid for jid in job_ids}
+            for future in futures:
+                try:
+                    if future.result():
+                        generated += 1
+                except Exception:
+                    pass
+                _resume_progress["current"] += 1
+                _resume_progress["message"] = f"{_resume_progress['current']}/{len(job_ids)} completed"
 
         method = "fast" if mode == "fast" else "thorough"
         _resume_progress["status"] = "done"
-        _resume_progress["message"] = f"Done ({method}): {generated} resumes, {errors} errors"
+        _resume_progress["message"] = f"Done ({method}): {generated}/{len(job_ids)} resumes generated"
 
-    thread = threading.Thread(target=run_resume_generation, daemon=True)
+    thread = threading.Thread(target=run_all, daemon=True)
     thread.start()
 
-    return jsonify({"status": "started", "total": len(job_ids)})
+    return jsonify({"status": "started", "total": len(job_ids), "job_ids": job_ids})
+
+
+@app.route("/api/resume-jobs/status")
+def api_resume_jobs_status():
+    """Return per-job resume generation status."""
+    with _resume_jobs_lock:
+        return jsonify(dict(_resume_jobs))
 
 
 @app.route("/api/generate-resumes/progress")
