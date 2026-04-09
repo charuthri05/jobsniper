@@ -190,41 +190,59 @@ def generate_resume(job: dict, progress_callback=None) -> dict:
     except Exception as e:
         logger.warning(f"Could not update protected content: {e}")
 
-    # Load config and run the orchestrator — this is the friend's code, untouched
+    # Run each stage individually so we can update progress between them.
+    # The orchestrator's code is untouched — we call run() with stage=1, 2, 3.
     try:
         from resume_builder.config import load_config
         from resume_builder.orchestrator import Orchestrator
 
         cfg = load_config(config_path=CONFIG_PATH)
-        console = Console(quiet=True)  # suppress rich output, we use progress_callback
+        console = Console(quiet=True)
         orchestrator = Orchestrator(config=cfg, console=console)
 
+        output_dir = None
+
+        # Stage 1: Planner
         update("Stage 1/3: Planning resume rewrites...")
-        pipeline_result = orchestrator.run(
-            jd_path=jd_path,
-            output_dir=None,  # let it use config default
-            stage=None,       # run all 3 stages
-            dry_run=False,
-            verbose=False,
+        plan_result = orchestrator.run(
+            jd_path=jd_path, output_dir=output_dir, stage=1, dry_run=False, verbose=False,
         )
-
-        if not pipeline_result.success:
-            errors = pipeline_result.errors if pipeline_result.errors else ["Unknown pipeline error"]
-            result["error"] = "; ".join(errors)
+        if not plan_result.success:
+            result["error"] = "Planner failed: " + "; ".join(plan_result.errors or ["unknown"])
             return result
+        output_dir = plan_result.output_dir
+        update(f"Stage 1 done ({plan_result.stage_times.get('planner', 0):.0f}s)")
 
-        # Read intermediate artifacts for display
-        if pipeline_result.plan_file and pipeline_result.plan_file.exists():
-            result["plan"] = pipeline_result.plan_file.read_text()
-        if pipeline_result.feedback_file and pipeline_result.feedback_file.exists():
-            result["feedback"] = pipeline_result.feedback_file.read_text()
+        if plan_result.plan_file and plan_result.plan_file.exists():
+            result["plan"] = plan_result.plan_file.read_text(encoding="utf-8")
 
-        # Find and copy the PDF
-        pdf_source = pipeline_result.pdf_file
+        # Stage 2: Reviewer
+        update("Stage 2/3: Reviewing and validating plan...")
+        review_result = orchestrator.run(
+            jd_path=jd_path, output_dir=output_dir, stage=2, dry_run=False, verbose=False,
+        )
+        if not review_result.success:
+            result["error"] = "Reviewer failed: " + "; ".join(review_result.errors or ["unknown"])
+            return result
+        update(f"Stage 2 done ({review_result.stage_times.get('reviewer', 0):.0f}s)")
+
+        if review_result.feedback_file and review_result.feedback_file.exists():
+            result["feedback"] = review_result.feedback_file.read_text(encoding="utf-8")
+
+        # Stage 3: Executor
+        update("Stage 3/3: Generating LaTeX resume...")
+        exec_result = orchestrator.run(
+            jd_path=jd_path, output_dir=output_dir, stage=3, dry_run=False, verbose=False,
+        )
+        if not exec_result.success:
+            result["error"] = "Executor failed: " + "; ".join(exec_result.errors or ["unknown"])
+            return result
+        update(f"Stage 3 done ({exec_result.stage_times.get('executor', 0):.0f}s). Compiling PDF...")
+
+        # Find the PDF
+        pdf_source = exec_result.pdf_file
         if not pdf_source or not pdf_source.exists():
-            pdf_source = _find_output_pdf(
-                job.get("company", ""), job.get("title", "")
-            )
+            pdf_source = _find_output_pdf(job.get("company", ""), job.get("title", ""))
 
         if not pdf_source or not pdf_source.exists():
             result["error"] = "Pipeline completed but no PDF generated. Is pdflatex installed?"

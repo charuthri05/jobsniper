@@ -785,7 +785,7 @@ def api_generate_resumes():
         use_3stage = builder_status["ready"]
 
         if use_3stage:
-            _resume_progress["message"] = "Using 3-stage Claude CLI resume builder"
+            _resume_progress["message"] = "Using Claude CLI resume builder (Plan → Review → Execute)"
         else:
             _resume_progress["message"] = (
                 "3-stage builder not ready — using built-in generator. "
