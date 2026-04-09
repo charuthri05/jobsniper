@@ -157,11 +157,16 @@ def compile_latex(
     final_pdf = pdf_file
     if output_name and pdf_file.exists():
         final_pdf = output_dir / f"{output_name}.pdf"
-        if final_pdf != pdf_file:
-            if final_pdf.exists():
-                final_pdf.unlink()
-            pdf_file.rename(final_pdf)
-            logger.info(f"Renamed PDF to: {final_pdf.name}")
+        # Skip rename if names match (case-insensitive — macOS filesystem)
+        if final_pdf.name.lower() != pdf_file.name.lower() and final_pdf != pdf_file:
+            try:
+                if final_pdf.exists():
+                    final_pdf.unlink()
+                pdf_file.rename(final_pdf)
+                logger.info(f"Renamed PDF to: {final_pdf.name}")
+            except OSError as e:
+                logger.warning(f"Could not rename PDF: {e}")
+                final_pdf = pdf_file  # fall back to original name
 
     # Parse warnings from log
     if log_content:

@@ -1,123 +1,83 @@
-# Resume Builder Configuration
-# 3-stage LLM pipeline: Planner → Reviewer → Executor
-# Core logic from github.com/Siddartha-Kodaboina/resume-builder
-
-app_name: "Resume Builder"
-version: "0.1.0"
-
-# =============================================================================
-# LLM Provider — Claude CLI ($0 via subscription)
-# =============================================================================
-
-active_provider: "claude_cli"
-
+app_name: Resume Builder
+version: 0.1.0
+active_provider: claude_cli
 claude_cli:
   enabled: true
-  mode: "print"
+  mode: print
   timeout_seconds: 300
   retry_on_failure: true
   max_retries: 2
-  add_dir_flag: "--add-dir"
-
+  add_dir_flag: --add-dir
 anthropic_api:
   enabled: false
   api_key: null
-  default_model: "claude-sonnet-4-20250514"
+  default_model: claude-sonnet-4-20250514
   max_tokens: 8000
   temperature: 0.0
-
 openai:
   enabled: false
   api_key: null
-  default_model: "gpt-4o"
+  default_model: gpt-4o
   max_tokens: 8000
   temperature: 0.0
-
 perplexity:
   enabled: false
   api_key: null
-  default_model: "llama-3.1-sonar-large-128k-online"
+  default_model: llama-3.1-sonar-large-128k-online
   max_tokens: 8000
-
-# =============================================================================
-# Input File Paths (relative to project root)
-# =============================================================================
-
 inputs:
-  job_description: "data/job_description_temp.md"
-  resume_template: "data/resume_template/template.tex"
+  job_description: data/job_description_temp.md
+  resume_template: data/resume_template/template.tex
   experience:
-    current: "data/experience/current.md"
-    previous: "data/experience/previous.md"
-  projects: "data/projects/projects.md"
-
-# =============================================================================
-# Output Configuration
-# =============================================================================
-
+    current: data/experience/current.md
+    previous: data/experience/previous.md
+  projects: data/projects/projects.md
 output:
-  base_dir: "data/resume_output"
-  folder_format: "{company}_{role}"
-  pdf_name: "Resume.pdf"
+  base_dir: data/resume_output
+  folder_format: '{company}_{role}'
+  pdf_name: resume.pdf
   artifacts:
-    plan: "resume_plan.md"
-    feedback: "review_feedback.md"
-    latex: "resume.tex"
-
-# =============================================================================
-# LaTeX Compilation
-# =============================================================================
-
+    plan: resume_plan.md
+    feedback: review_feedback.md
+    latex: resume.tex
 latex:
-  compiler: "pdflatex"
+  compiler: pdflatex
   compile_twice: true
   clean_aux_files: true
   aux_extensions:
-    - ".aux"
-    - ".log"
-    - ".out"
-    - ".toc"
-    - ".fls"
-    - ".fdb_latexmk"
-
-# =============================================================================
-# Stage Configuration
-# =============================================================================
-
+  - .aux
+  - .log
+  - .out
+  - .toc
+  - .fls
+  - .fdb_latexmk
 stages:
   planner:
-    name: "Stage 1: Planner"
-    description: "Analyzes JD and creates rewrite plan"
-    output_file: "resume_plan.md"
-
+    name: 'Stage 1: Planner'
+    description: Analyzes JD and creates rewrite plan
+    output_file: resume_plan.md
   reviewer:
-    name: "Stage 2: Reviewer"
-    description: "Validates plan and provides feedback"
-    output_file: "review_feedback.md"
-
+    name: 'Stage 2: Reviewer'
+    description: Validates plan and provides feedback
+    output_file: review_feedback.md
   executor:
-    name: "Stage 3: Executor"
-    description: "Generates final LaTeX from plan + feedback"
-    output_file: "resume.tex"
-
-# =============================================================================
-# Protected Content (loaded dynamically from candidate_profile.json at runtime)
-# =============================================================================
-
+    name: 'Stage 3: Executor'
+    description: Generates final LaTeX from plan + feedback
+    output_file: resume.tex
 protected_content:
-  name: ""
-  email: ""
-  phone: ""
-  linkedin: ""
-  github: ""
-  education_dates: {}
-  employment_dates: {}
-
-# =============================================================================
-# Logging
-# =============================================================================
-
+  name: YATHVIK SAI TRINADH PAPINENI
+  email: yathvik2000@gmail.com
+  phone: (716) 939-8758
+  linkedin: ''
+  github: ''
+  education_dates:
+    university_at_buffal: '2024'
+    v_r_siddhartha_colle: '2021'
+  employment_dates:
+    "guru\u2019s_infotech_inc": 2025-10 -- present
+    rebecca_everlene: 2025-02 -- 2025-10
+    tata_consultancy_services: 2021-07 -- 2023-08
 logging:
-  level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
   file: null
