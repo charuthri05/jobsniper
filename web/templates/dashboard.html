@@ -86,12 +86,12 @@
             </button>
             <div class="btn-group btn-group-sm" id="btn-generate-resumes-group">
                 <button class="btn btn-info" id="btn-generate-resumes" onclick="generateResumes()" disabled>
-                    <i class="bi bi-file-earmark-person me-1"></i>Generate Resumes
+                    <i class="bi bi-lightning-fill me-1"></i>Fast Resume
                 </button>
                 <button class="btn btn-info dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" disabled id="btn-resume-mode-toggle"></button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="setResumeMode('fast')"><i class="bi bi-lightning-fill text-warning me-2"></i>Fast (~30s) — single AI call</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="setResumeMode('thorough')"><i class="bi bi-shield-check text-success me-2"></i>Thorough (~7min) — 3-stage pipeline</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="setResumeMode('fast')"><i class="bi bi-lightning-fill text-warning me-2"></i>Fast — Plan + Execute</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="setResumeMode('thorough')"><i class="bi bi-shield-check text-success me-2"></i>Thorough — Plan + Review + Execute</a></li>
                 </ul>
             </div>
             <button class="btn btn-success btn-sm" id="btn-autofill" onclick="autofillSelected()" disabled>

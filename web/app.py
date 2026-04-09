@@ -887,9 +887,9 @@ _resume_progress = {"current": 0, "total": 0, "status": "idle", "message": ""}
 
 @app.route("/api/generate-resumes", methods=["POST"])
 def api_generate_resumes():
-    """Generate tailored resume PDFs. Supports two modes:
-    - fast: single AI API call → LaTeX → PDF (~30s)
-    - thorough: 3-stage Claude CLI pipeline (~7min)
+    """Generate tailored resume PDFs via Claude CLI. Two modes:
+    - fast: Plan → Execute (skip Reviewer)
+    - thorough: Plan → Review → Execute (all 3 stages)
     """
     data = request.get_json()
     job_ids = data.get("job_ids", [])
@@ -907,20 +907,23 @@ def api_generate_resumes():
     _resume_progress["message"] = "Starting..."
 
     def run_resume_generation():
-        from pipeline.resume_builder_bridge import generate_resume, generate_resume_fast, check_builder_ready
+        from pipeline.resume_builder_bridge import generate_resume, check_builder_ready
 
         builder_status = check_builder_ready()
         builder_ready = builder_status["ready"]
 
-        if mode == "thorough" and builder_ready:
-            _resume_progress["message"] = "Thorough mode: 3-stage Claude CLI pipeline"
-        elif builder_ready:
-            _resume_progress["message"] = "Fast mode: single AI call → LaTeX → PDF"
-        else:
+        if not builder_ready:
             _resume_progress["message"] = (
-                "Resume builder not ready — using built-in generator. "
-                "Set up experience files in Settings to enable it."
+                "Resume builder not ready. "
+                "Set up experience files and base resume in Settings."
             )
+            _resume_progress["status"] = "done"
+            return
+
+        if mode == "thorough":
+            _resume_progress["message"] = "Thorough: Plan → Review → Execute (Claude CLI)"
+        else:
+            _resume_progress["message"] = "Fast: Plan → Execute (Claude CLI)"
 
         generated = 0
         errors = 0
@@ -934,19 +937,11 @@ def api_generate_resumes():
             _resume_progress["message"] = f"Resume {i+1}/{len(job_ids)}: {job['title']} at {job['company']}"
 
             try:
-                if mode == "thorough" and builder_ready:
-                    def progress_cb(msg):
-                        _resume_progress["message"] = f"[{i+1}/{len(job_ids)}] {msg}"
-                    result = generate_resume(job, progress_callback=progress_cb)
-                elif builder_ready:
-                    def progress_cb(msg):
-                        _resume_progress["message"] = f"[{i+1}/{len(job_ids)}] {msg}"
-                    result = generate_resume_fast(job, progress_callback=progress_cb)
-                else:
-                    from pipeline.resume_generator import generate_tailored_resume
-                    profile = load_profile()
-                    generate_tailored_resume(job, profile)
-                    result = {"success": True}
+                def progress_cb(msg):
+                    _resume_progress["message"] = f"[{i+1}/{len(job_ids)}] {msg}"
+
+                skip_review = (mode == "fast")
+                result = generate_resume(job, progress_callback=progress_cb, skip_review=skip_review)
 
                 if result.get("success"):
                     generated += 1

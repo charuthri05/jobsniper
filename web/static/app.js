@@ -617,10 +617,10 @@ function setResumeMode(mode) {
     const btn = document.getElementById('btn-generate-resumes');
     if (mode === 'fast') {
         btn.innerHTML = '<i class="bi bi-lightning-fill me-1"></i>Fast Resume';
-        showToast('Resume mode: Fast (~30s per job)', 'info');
+        showToast('Fast mode: Plan + Execute (skip review)', 'info');
     } else {
         btn.innerHTML = '<i class="bi bi-shield-check me-1"></i>Thorough Resume';
-        showToast('Resume mode: Thorough 3-stage (~7min per job)', 'info');
+        showToast('Thorough mode: Plan + Review + Execute', 'info');
     }
 }
 
@@ -628,7 +628,7 @@ async function generateResumes() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
 
-    const modeLabel = resumeMode === 'fast' ? 'Fast (~30s each)' : 'Thorough (~7min each)';
+    const modeLabel = resumeMode === 'fast' ? 'Fast (Plan + Execute)' : 'Thorough (Plan + Review + Execute)';
     showConfirm(`Generate ${modeLabel} resumes for ${ids.length} job(s)?`, async () => {
         lastResumeGeneratedIds = [...ids];
 

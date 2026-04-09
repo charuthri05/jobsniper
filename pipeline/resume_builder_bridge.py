@@ -145,12 +145,16 @@ def check_builder_ready() -> dict:
     }
 
 
-def generate_resume(job: dict, progress_callback=None) -> dict:
+def generate_resume(job: dict, progress_callback=None, skip_review: bool = False) -> dict:
     """
-    Generate a tailored resume for a job using the 3-stage pipeline.
+    Generate a tailored resume for a job using Claude CLI pipeline.
 
     Calls the friend's resume builder orchestrator directly — no subprocess,
     just Python function calls. The core code is untouched.
+
+    Modes:
+    - skip_review=False (thorough): Plan → Review → Execute (~7min)
+    - skip_review=True (fast): Plan → Execute (~4min)
 
     Args:
         job: Job dict from our database
@@ -201,9 +205,12 @@ def generate_resume(job: dict, progress_callback=None) -> dict:
         orchestrator = Orchestrator(config=cfg, console=console)
 
         output_dir = None
+        total_stages = 2 if skip_review else 3
+        stage_num = 0
 
         # Stage 1: Planner
-        update("Stage 1/3: Planning resume rewrites...")
+        stage_num += 1
+        update(f"Stage {stage_num}/{total_stages}: Planning resume rewrites...")
         plan_result = orchestrator.run(
             jd_path=jd_path, output_dir=output_dir, stage=1, dry_run=False, verbose=False,
         )
@@ -211,33 +218,47 @@ def generate_resume(job: dict, progress_callback=None) -> dict:
             result["error"] = "Planner failed: " + "; ".join(plan_result.errors or ["unknown"])
             return result
         output_dir = plan_result.output_dir
-        update(f"Stage 1 done ({plan_result.stage_times.get('planner', 0):.0f}s)")
+        update(f"Stage {stage_num} done ({plan_result.stage_times.get('planner', 0):.0f}s)")
 
         if plan_result.plan_file and plan_result.plan_file.exists():
             result["plan"] = plan_result.plan_file.read_text(encoding="utf-8")
 
-        # Stage 2: Reviewer
-        update("Stage 2/3: Reviewing and validating plan...")
-        review_result = orchestrator.run(
-            jd_path=jd_path, output_dir=output_dir, stage=2, dry_run=False, verbose=False,
-        )
-        if not review_result.success:
-            result["error"] = "Reviewer failed: " + "; ".join(review_result.errors or ["unknown"])
-            return result
-        update(f"Stage 2 done ({review_result.stage_times.get('reviewer', 0):.0f}s)")
+        # Stage 2: Reviewer (skipped in fast mode)
+        if not skip_review:
+            stage_num += 1
+            update(f"Stage {stage_num}/{total_stages}: Reviewing and validating plan...")
+            review_result = orchestrator.run(
+                jd_path=jd_path, output_dir=output_dir, stage=2, dry_run=False, verbose=False,
+            )
+            if not review_result.success:
+                result["error"] = "Reviewer failed: " + "; ".join(review_result.errors or ["unknown"])
+                return result
+            update(f"Stage {stage_num} done ({review_result.stage_times.get('reviewer', 0):.0f}s)")
 
-        if review_result.feedback_file and review_result.feedback_file.exists():
-            result["feedback"] = review_result.feedback_file.read_text(encoding="utf-8")
+            if review_result.feedback_file and review_result.feedback_file.exists():
+                result["feedback"] = review_result.feedback_file.read_text(encoding="utf-8")
+        else:
+            # Write minimal feedback stub so Executor doesn't crash looking for it
+            feedback_path = output_dir / cfg.stages.reviewer.output_file
+            if not feedback_path.exists():
+                feedback_path.write_text(
+                    "ASSESSMENT: Good\nALIGNMENT_SCORE: 8\n"
+                    "GAPS_IDENTIFIED:\n- No significant gaps\n"
+                    "REQUIRED_ADJUSTMENTS:\nNo adjustments needed\n"
+                    "ADDITIONAL_RECOMMENDATIONS:\n- Proceed with plan as-is\n",
+                    encoding="utf-8",
+                )
 
         # Stage 3: Executor
-        update("Stage 3/3: Generating LaTeX resume...")
+        stage_num += 1
+        update(f"Stage {stage_num}/{total_stages}: Generating LaTeX resume...")
         exec_result = orchestrator.run(
             jd_path=jd_path, output_dir=output_dir, stage=3, dry_run=False, verbose=False,
         )
         if not exec_result.success:
             result["error"] = "Executor failed: " + "; ".join(exec_result.errors or ["unknown"])
             return result
-        update(f"Stage 3 done ({exec_result.stage_times.get('executor', 0):.0f}s). Compiling PDF...")
+        update(f"Stage {stage_num} done ({exec_result.stage_times.get('executor', 0):.0f}s). Compiling PDF...")
 
         # Find the PDF
         pdf_source = exec_result.pdf_file
@@ -264,144 +285,3 @@ def generate_resume(job: dict, progress_callback=None) -> dict:
         return result
 
 
-def generate_resume_fast(job: dict, progress_callback=None) -> dict:
-    """
-    Fast resume generation: one AI API call → LaTeX → pdflatex → PDF.
-
-    Skips the 3-stage pipeline entirely. Uses the configured AI provider
-    (OpenAI/Anthropic API) for speed (~20-30s instead of ~7min).
-    """
-    import re
-
-    def update(msg):
-        logger.info(msg)
-        if progress_callback:
-            progress_callback(msg)
-
-    result = {"success": False, "pdf_path": None, "error": None}
-
-    # Check inputs
-    status = check_builder_ready()
-    if not status["ready"]:
-        result["error"] = "Resume builder not ready: " + "; ".join(status["issues"])
-        return result
-
-    # Load inputs
-    template_path = PROJECT_ROOT / "data" / "resume_template" / "template.tex"
-    template = template_path.read_text(encoding="utf-8")
-
-    experience_parts = []
-    exp_dir = PROJECT_ROOT / "data" / "experience"
-    for f in sorted(exp_dir.glob("*.md")):
-        if f.name != "previous.md":  # skip merged file, read individual ones
-            experience_parts.append(f.read_text(encoding="utf-8"))
-    if not experience_parts:
-        # fallback to merged
-        merged = exp_dir / "previous.md"
-        if merged.exists():
-            experience_parts.append(merged.read_text(encoding="utf-8"))
-    experience = "\n\n---\n\n".join(experience_parts)
-
-    projects_path = PROJECT_ROOT / "data" / "projects" / "projects.md"
-    projects = projects_path.read_text(encoding="utf-8") if projects_path.exists() else ""
-
-    description = (job.get("description") or "")[:5000]
-    company = job.get("company", "Unknown")
-    title = job.get("title", "Unknown")
-
-    update(f"Generating resume for {title} at {company}...")
-
-    # One-shot AI call
-    try:
-        from utils.ai_client import chat_completion
-
-        system = r"""You are an expert LaTeX resume writer. Generate a complete, compilable LaTeX resume tailored to a specific job description.
-
-CRITICAL RULES:
-1. Output ONLY the complete LaTeX document — no explanations, no markdown code blocks
-2. Start with \documentclass and end with \end{document}
-3. Keep ALL facts 100% accurate — only adjust emphasis, wording, and bullet ordering
-4. NEVER fabricate experience or skills the candidate doesn't have
-5. Reframe existing experience to highlight JD-relevant aspects
-6. Use action verbs and quantifiable achievements
-7. Match the technical terminology used in the JD
-8. Preserve the exact LaTeX structure and formatting commands from the base template"""
-
-        user_msg = f"""Tailor this resume for the job below. Rewrite bullet points to maximize alignment with the JD requirements. Reorder sections and bullets so the most relevant appear first.
-
-## Target Job
-**Company:** {company}
-**Role:** {title}
-**Description:**
-{description}
-
-## Candidate's Experience
-{experience}
-
-## Candidate's Projects
-{projects}
-
-## Base LaTeX Resume Template (preserve this structure exactly)
-{template}
-
-Generate the COMPLETE tailored LaTeX resume. Start with \\documentclass and end with \\end{{document}}."""
-
-        update("AI generating tailored LaTeX...")
-        raw = chat_completion(system=system, user_message=user_msg, max_tokens=4000)
-
-        # Extract LaTeX
-        code_match = re.search(r"```(?:latex|tex)?\s*(.*?)```", raw, re.DOTALL)
-        if code_match:
-            latex = code_match.group(1).strip()
-        else:
-            doc_match = re.search(r"(\\documentclass.*?\\end\{document\})", raw, re.DOTALL)
-            if doc_match:
-                latex = doc_match.group(1).strip()
-            elif "\\documentclass" in raw and "\\end{document}" in raw:
-                latex = raw.strip()
-            else:
-                result["error"] = "AI did not return valid LaTeX"
-                return result
-
-    except Exception as e:
-        result["error"] = f"AI call failed: {e}"
-        return result
-
-    # Write .tex and compile with pdflatex
-    try:
-        from resume_builder.utils.latex_compiler import compile_latex, find_pdflatex
-
-        if not find_pdflatex():
-            result["error"] = "pdflatex not installed"
-            return result
-
-        output_dir = PROJECT_ROOT / "data" / "resume_output" / "fast"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        tex_path = output_dir / "resume.tex"
-        tex_path.write_text(latex, encoding="utf-8")
-
-        update("Compiling PDF...")
-        compile_result = compile_latex(
-            tex_file=tex_path,
-            output_dir=output_dir,
-            compile_twice=True,
-            clean_aux=True,
-        )
-
-        if not compile_result.success or not compile_result.pdf_path:
-            result["error"] = f"pdflatex failed: {'; '.join(compile_result.errors[:3])}"
-            return result
-
-        # Copy to resumes directory
-        RESUMES_DIR.mkdir(parents=True, exist_ok=True)
-        dest = RESUMES_DIR / f"{job['id']}.pdf"
-        shutil.copy2(str(compile_result.pdf_path), str(dest))
-
-        update(f"Resume saved: {dest.name}")
-        result["success"] = True
-        result["pdf_path"] = str(dest)
-        return result
-
-    except Exception as e:
-        result["error"] = f"Compilation error: {e}"
-        return result
