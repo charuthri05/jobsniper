@@ -100,7 +100,7 @@
 
         <div class="row g-4">
             <!-- ── Left Sidebar Navigation ── -->
-            <div class="col-md-3">
+            <div class="col-lg-3">
                 <div class="setup-sidebar">
                     <div class="nav flex-column nav-pills" id="setup-tabs" role="tablist">
                         <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-personal" type="button" role="tab">
@@ -134,7 +134,7 @@
             </div>
 
             <!-- ── Tab Content ── -->
-            <div class="col-md-9">
+            <div class="col-lg-9">
                 <div class="tab-content">
 
                     <!-- ────────────────────────────────────────── -->
@@ -472,7 +472,7 @@
                     </div>
 
                 </div><!-- /tab-content -->
-            </div><!-- /col-md-9 -->
+            </div><!-- /col-lg-9 -->
         </div><!-- /row -->
 
     </form>
@@ -1110,16 +1110,19 @@ async function applyDiscoveredBoards() {
 
         const ghField = document.getElementById('f-greenhouse');
         const lvField = document.getElementById('f-lever');
+        const abField = document.getElementById('f-ashby');
         const currentGh = csvToArray(ghField.value);
         const currentLv = csvToArray(lvField.value);
+        const currentAb = csvToArray(abField.value);
         ghField.value = arrayToCsv([...new Set([...currentGh, ...ghSlugs])]);
         lvField.value = arrayToCsv([...new Set([...currentLv, ...lvSlugs])]);
+        abField.value = arrayToCsv([...new Set([...currentAb, ...abSlugs])]);
         updateBoardCounts();
 
         document.getElementById('discover-status').innerHTML =
             `<div class="alert alert-success py-2 small">
-                Added ${data.added_greenhouse} Greenhouse + ${data.added_lever} Lever boards.
-                Total: ${data.total_greenhouse} Greenhouse, ${data.total_lever} Lever
+                Added ${data.added_greenhouse} Greenhouse + ${data.added_lever} Lever + ${data.added_ashby || 0} Ashby boards.
+                Total: ${data.total_greenhouse} Greenhouse, ${data.total_lever} Lever, ${data.total_ashby || 0} Ashby
             </div>`;
     } catch(e) {
         showToast('Failed to apply boards', 'error');
