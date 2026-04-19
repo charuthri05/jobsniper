@@ -43,48 +43,60 @@ STYLE RULES (CRITICAL — these separate a human-written resume from an AI-gener
 
 9. Never fabricate experience, tools, or metrics that are not grounded in the rewrite plan or source experience materials.
 
-TAILORING STRATEGY (apply to every JD, not just this one — READ CAREFULLY):
+TAILORING STRATEGY (apply to every JD — READ CAREFULLY):
 
-1. EXPERIENCE SECTIONS (BOTH CURRENT AND PREVIOUS ROLES) — PRESERVE + OPTIONAL ADDITIONS + OPTIONAL LIGHT REWORDING.
-   Every experience sub-section (current role like Linq, plus every previous-role sub-section such as OpenText Associate EDIS, OpenText Associate PCS, OpenText Intern) is treated the same way. The master template is the baseline. You may do any of the following to ANY experience section:
-   - Leave all bullets verbatim (the default, and often the right answer).
-   - ADD one or more new JD-relevant bullets grounded in the candidate's real source experience materials. New bullets may go in the current role OR in a previous-role sub-section if the JD calls for skills that section demonstrates. Never fabricate responsibilities.
-   - LIGHTLY REWORD an existing bullet to surface a JD-priority keyword the bullet's real facts support.
-   When rewording an existing bullet, these invariants MUST hold:
-     a. You do not merge, split, drop, or reorder existing bullets within a sub-section. If the master has 5 EDIS bullets, the output has at least 5 (and those 5 are in the same order). Additions go after existing bullets or thematically grouped among them.
-     b. The underlying fact, technology, and what the metric measured do not change. If source says "reduced unauthorized access attempts by 92%", the output must still say 92% about unauthorized access. Do not reframe "case management usability" as "design workflow efficiency" just because the JD prefers the latter phrasing.
-     c. The metric number is preserved exactly. Never invent, round, or expand. If the source has no number, the output has no number.
-     d. No filler or soft-skill additions ("scalable", "production-ready", "enterprise-grade", "mentoring junior engineers", "leading teams", "driving cross-functional discussions") unless those words already exist verbatim in the source bullet.
-     e. If you cannot reword a bullet without violating (b)-(d), leave it verbatim.
-   Default to minimal changes. Rewording is the exception; additions should be genuinely JD-driven, not cosmetic.
+1. JD-DRIVEN ADDITIONS ARE MANDATORY (NOT OPTIONAL).
+   The purpose of per-JD tailoring is to make the resume densely match the JD's top requirements. A generated resume that is nearly identical to the master is a tailoring FAILURE. For every JD you MUST:
+     a. Identify the JD's top 5-8 technical priorities (technologies, skills, domains, system types).
+     b. Check which priorities the candidate's source experience materials actually demonstrate.
+     c. For each JD priority the master template does NOT already surface, ADD a new bullet to the appropriate experience sub-section (current role for current-role work, or a previous-role sub-section for that role's work).
+   The candidate's source experience materials (in the user prompt) are the canonical source of truth for what they have done; the master is a subset and often omits JD-relevant work. Leaving a clear JD requirement unmentioned when the source describes that work is a bug, not a safe default.
 
-2. PROJECTS — PRESERVE BULLETS VERBATIM, DROP WHOLE PROJECTS IF SPACE IS TIGHT.
-   Keep project bullet text verbatim. Do not reword project bullets. If space requires, drop a whole project sub-section (lowest JD-signal first). Never trim individual bullets inside a retained project.
+2. KEEP ALL EXISTING MASTER BULLETS BY DEFAULT.
+   Every bullet in the master template stays. Do NOT drop a master bullet just because it has low JD relevance. Drop master bullets ONLY when the resume exceeds two pages after all additions (see rule 7 compression order), and even then only the LOWEST-JD-RELEVANCE master bullets go first. Never drop a JD-relevant master bullet.
 
-3. SKILLS — REORDER ALLOWED, LINE-DROPS ALLOWED IF SPACE IS TIGHT.
-   You may reorder the skill category lines so JD-priority categories appear first. You may drop an entire skill line if space is tight. Do not add skills the candidate does not have, and do not rewrite a line's content.
+3. LIGHT REWORDING OF EXISTING MASTER BULLETS — OPTIONAL, WITH INVARIANTS.
+   You may lightly reword an existing master bullet to surface a JD keyword the bullet's real facts support. Invariants:
+     a. Underlying fact, technology, and what the metric measured do not change. "Reduced unauthorized access attempts by 92%" stays about unauthorized access. Do not reframe "case management usability" as "design workflow efficiency".
+     b. Metric number preserved exactly. If source has no number, output has no number.
+     c. No filler or soft-skill additions ("scalable", "production-ready", "enterprise-grade", "mentoring junior engineers", "leading teams", "driving cross-functional discussions") unless already in source.
+     d. If you cannot reword without violating (a)-(c), leave the bullet verbatim.
 
-4. EDUCATION — VERBATIM, ALWAYS. Never modify.
+4. PROJECTS — BULLETS VERBATIM, DROP WHOLE PROJECTS FOR SPACE.
+   Never reword project bullets. If space requires compression, drop a whole project sub-section (lowest JD-signal first). Never trim individual bullets inside a kept project.
 
-5. NO FABRICATION OF METRICS OR SOFT CLAIMS (ABSOLUTE, APPLIES EVERYWHERE). Never invent a metric (percentage, dollar amount, time reduction, uptime figure) not present in the master template or source experience materials. If the template says "reduced incident response time" without a number, do NOT output "reduced incident response time by 60%". Never add phrases like "mentoring junior engineers", "leading architectural discussions", "99.9% uptime", "production-ready", "enterprise-grade", "driving cross-functional collaboration" unless those phrases already exist verbatim in the source materials.
+5. SKILLS — REORDER ALLOWED, LINE-DROPS FOR SPACE.
+   Reorder skill category lines so JD-priority categories appear first. Drop an entire skill line only if space is tight. Do not add skills the candidate does not have, and do not rewrite line content.
 
-6. TARGET IS TWO FULL PAGES, NOT UNDER, NOT OVER.
-   - Aim for a resume that fills two pages fully.
-   - If the master plus your additions is exactly two pages, stop.
-   - If shorter than two pages, ADD more bullets drawn from the candidate's real source experience (either in the current role or in previous-role sub-sections where the bullet's real facts apply) to fill the space. Additions must be source-grounded, never fabricated.
-   - If additions push the output past two pages, compress in this exact order. Stop at the first step that brings the resume back to two pages:
-     a. Drop one project entirely (lowest JD-signal project first — for non-systems roles drop Taco-DB first; for non-cloud/monitoring roles drop URL Shortener first; drop Real-Time Chat last).
+6. EDUCATION — VERBATIM, ALWAYS. Never modify.
+
+7. TARGET IS TWO FULL PAGES, AFTER JD-DRIVEN ADDITIONS.
+   JD-relevant additions take priority over page count. Do NOT skip a required addition because the master is already at two pages — add the bullet first, then compress other content to make room.
+
+   Workflow:
+     Step 1: Apply all JD-driven additions (rule 1) and light rewording (rule 3).
+     Step 2: Check page count. If at two pages, stop. If short, add more source-grounded bullets. If long, compress.
+
+   Compression order when over two pages (stop at the first step that fits):
+     a. Drop one project entirely (lowest JD-signal first — for non-systems roles drop Taco-DB first; for non-cloud/monitoring roles drop URL Shortener first; drop Real-Time Chat last).
      b. Drop a second project entirely.
-     c. Drop one or more skill category lines (least JD-relevant first).
-     d. Only if all of the above still leave you over two pages, remove a single ADDED bullet from an experience section (choose the lowest JD-alignment addition). Never remove a bullet that exists in the master template.
-   - NEVER remove a whole work experience section.
-   - NEVER remove, merge, or split a bullet that exists in the master template.
+     c. Drop the lowest-JD-relevance master bullets from experience sub-sections (bullets whose technology and domain have no connection to JD priorities). Never drop a JD-relevant master bullet. Never reduce a sub-section to zero bullets.
+     d. Drop skill category lines (least JD-relevant first).
+     e. Drop the lowest-alignment ADDED experience bullets.
+     f. As a last resort, lightly adjust LaTeX spacing (\vspace, itemsep) so content fits.
 
-7. SUMMARY TUNING. Rewrite the summary section to match JD keywords for ATS:
-   - Keep the original summary's sentence rhythm, length, and structure.
-   - Swap in JD-aligned skill clusters and technology lists so JD-priority terms appear first (leading terms get ATS weight).
-   - Only include skills the candidate actually has. Never add fabricated soft-skills claims ("mentoring junior engineers", "leading teams", "driving architectural vision") unless those are in source materials.
-   - Never invent metrics in the summary.
+   NEVER drop a whole experience sub-section.
+   NEVER drop a JD-relevant bullet (master or added).
+   NEVER merge or split a master bullet.
+
+8. NO FABRICATION (ABSOLUTE, APPLIES EVERYWHERE).
+   Never invent metrics, technologies, responsibilities, or soft claims. If source has no number, output has no number. Never add "99.9% uptime", "mentoring junior engineers", "leading teams", "enterprise-grade", "production-ready", "driving cross-functional collaboration" unless verbatim in source.
+
+9. SUMMARY TUNING. Rewrite the summary to match JD keywords for ATS. Draw the candidate's skill set from SOURCE EXPERIENCE MATERIALS, not just the master summary — the master often omits JD-relevant skills the candidate actually has. For example, if the master summary says "full-stack and distributed systems" but source describes GenAI agent development and observability engineering, and the JD is for detection engineering, the tuned summary must surface those real skills.
+   - Keep the original summary's sentence rhythm and length.
+   - Swap in JD-aligned skill clusters and technology lists so JD-priority terms appear first (ATS weight).
+   - Pull skills from source materials. Only include skills the candidate actually has.
+   - Never add fabricated soft-skill claims or metrics.
 
 OUTPUT FORMAT:
 Return ONLY the complete LaTeX document, beginning with \documentclass and ending with \end{document}. No code fences. No commentary. No reasoning steps.

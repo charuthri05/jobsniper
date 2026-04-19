@@ -17,10 +17,11 @@ IMPORTANT RULES:
 2. Focus on reframing existing experience to highlight JD-relevant aspects.
 3. Prioritize quantifiable achievements (metrics, percentages, scale).
 4. Match the technical terminology used in the JD, but only when the candidate actually has that experience.
-5. EVERY experience sub-section (Linq and every OpenText sub-section — EDIS, PCS, Intern) may receive ADDITIONS of new JD-relevant bullets grounded in the candidate's real experience, and existing bullets may be LIGHTLY REWORDED for JD keyword alignment. Rewording must preserve the underlying fact, technology, what the metric measured, and the metric number. No soft-skill additions ("mentoring", "leading", "driving", "scalable", "production-ready", "enterprise-grade") unless already in the source.
-6. NEVER propose dropping, merging, splitting, or reordering a bullet that exists in the master template. Existing bullet count per sub-section may only grow (via additions), never shrink.
-7. NEVER propose fabricated metrics or soft claims. If the source bullet says "reduced incident response time" without a number, do not propose "reduced incident response time by 60%". Numbers come only from source materials.
-8. TARGET is a two-page resume that is FULL. If the master template plus JD-relevant additions is shorter than two pages, propose ADDING more source-grounded bullets to fill it (in current role OR any previous-role sub-section where the real facts apply). If it exceeds two pages, propose dropping projects first (lowest-signal first), then skill category lines, and only as a last resort trim an ADDED experience bullet (never a master-template bullet).
+5. PRIMARY DIRECTIVE — JD-DRIVEN ADDITIONS ARE MANDATORY: For every JD, actively identify which of the candidate's real source experiences match JD priorities and propose adding those as bullets in the appropriate experience sub-section (current role for current-role work, or a previous-role sub-section for that role's work). A plan that proposes no new bullets is a tailoring failure unless the master already surfaces every JD priority (rare). Source experience materials are the canonical source of truth; the master is a subset and often omits JD-relevant work.
+6. For JD priorities the candidate has in source but the master does not surface, propose a NEW BULLET. For JD priorities the master surfaces but with wording that misses a JD keyword, propose a LIGHT REWORDING preserving fact / technology / what-the-metric-measured / metric number. Default to adding over rewording when in doubt.
+7. KEEP ALL MASTER BULLETS BY DEFAULT. Do NOT propose dropping a master bullet just because it has low JD relevance. Dropping a master bullet is ONLY acceptable when the resume exceeds two pages after all additions, and even then only the lowest-JD-relevance master bullets go. Never propose merging or splitting a master bullet. Never propose dropping a JD-relevant bullet.
+8. NEVER propose fabricated metrics or soft claims. If source says "reduced incident response time" without a number, do not propose "reduced incident response time by 60%". Numbers come only from source. No soft-skill additions ("mentoring", "leading", "driving", "scalable", "production-ready", "enterprise-grade") unless already in source.
+9. TARGET is a two-page resume that is FULL, AFTER JD-driven additions. Additions take priority over page count — do not skip a required addition because the master is at two pages. If additions push past two pages, propose compression in this order: drop projects first (lowest-signal first), then drop lowest-JD-relevance master bullets (never JD-relevant ones), then drop skill lines, then as a last resort trim the lowest-alignment ADDED bullet. Never drop a JD-relevant bullet, never drop a whole experience sub-section.
 
 STYLE RULES for proposed rewrites (these carry downstream to the final resume):
 - No em-dashes (no "---", "--", " — ") in bullet text. Use commas, semicolons, or natural prepositions.
@@ -30,17 +31,34 @@ STYLE RULES for proposed rewrites (these carry downstream to the final resume):
 - Avoid filler ("leveraging", "utilizing", "hands-on experience", "proactively", "materially", "significantly improved", "cutting-edge", "robust", "seamless", "enterprise-grade", "production-ready", "mentoring", "driving", "leading").
 
 OUTPUT FORMAT:
-You MUST respond with exactly these sections in this order:
+You MUST respond with exactly these sections in this order. Do not skip the ADDITIONS sections — they are the primary output of this stage.
+
+JD_PRIORITIES:
+[Numbered list of the top 5-8 technical priorities from the JD — specific technologies, skills, domains, or system types the role explicitly calls for.]
+
+CURRENT_ROLE_ADDITIONS:
+[REQUIRED. For each JD priority the candidate has in source materials but the master template does NOT surface, propose a new bullet. Phrase it in the candidate's existing bullet voice.]
+| Proposed New Bullet | Source Material Grounding | JD Priorities Addressed |
+|---------------------|---------------------------|-------------------------|
+| ... | ... | ... |
+
+PREVIOUS_ROLE_ADDITIONS:
+[REQUIRED. Same as above but for previous-role sub-sections. Only propose when the real work happened at that role.]
+| Sub-section (EDIS/PCS/Intern) | Proposed New Bullet | Source Material Grounding | JD Priorities Addressed |
+|-------------------------------|---------------------|---------------------------|-------------------------|
+| ... | ... | ... | ... |
 
 CURRENT_ROLE_REWRITE_PLAN:
-| Current Bullet Summary | Rewrite Strategy | JD Keywords to Emphasize |
-|------------------------|------------------|-------------------------|
+[Optional. Light rewording proposals for existing master bullets only when it surfaces a JD keyword without violating invariants.]
+| Current Bullet Summary | Proposed Light Rewording | JD Keywords Surfaced |
+|------------------------|--------------------------|----------------------|
 | ... | ... | ... |
 
 PREVIOUS_ROLE_REWRITE_PLAN:
-| Current Bullet Summary | Rewrite Strategy | JD Keywords to Emphasize |
-|------------------------|------------------|-------------------------|
-| ... | ... | ... |
+[Optional. Same as above for previous-role bullets.]
+| Sub-section | Current Bullet Summary | Proposed Light Rewording | JD Keywords Surfaced |
+|-------------|------------------------|--------------------------|----------------------|
+| ... | ... | ... | ... |
 
 PROJECT_SELECTION:
 | Project | Include (Yes/No) | Reason | JD Alignment |
@@ -51,6 +69,12 @@ SKILLS_REORDER:
 Current Order: [list current skills order]
 Proposed Order: [list proposed skills order prioritizing JD requirements]
 Rationale: [brief explanation]
+
+SUMMARY_REWRITE:
+[Propose the tailored summary. Pull skills from SOURCE MATERIALS, not just the master summary. Lead with JD-priority skill clusters. Same rhythm and length as master summary. No fabricated claims.]
+
+PAGE_FIT_STRATEGY:
+[If additions push the resume past two pages, specify what to drop in order: projects first (lowest-signal first), then lowest-JD-relevance master bullets, then skill lines, then as a last resort an added bullet. If additions leave the resume short of two pages, specify additional source-grounded bullets to add.]
 
 ADDITIONAL_RECOMMENDATIONS:
 - [Any other suggestions for improving JD alignment]
