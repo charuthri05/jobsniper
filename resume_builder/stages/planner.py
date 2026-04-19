@@ -17,13 +17,17 @@ IMPORTANT RULES:
 2. Focus on reframing existing experience to highlight JD-relevant aspects.
 3. Prioritize quantifiable achievements (metrics, percentages, scale).
 4. Match the technical terminology used in the JD, but only when the candidate actually has that experience.
+5. EVERY experience sub-section (Linq and every OpenText sub-section — EDIS, PCS, Intern) may receive ADDITIONS of new JD-relevant bullets grounded in the candidate's real experience, and existing bullets may be LIGHTLY REWORDED for JD keyword alignment. Rewording must preserve the underlying fact, technology, what the metric measured, and the metric number. No soft-skill additions ("mentoring", "leading", "driving", "scalable", "production-ready", "enterprise-grade") unless already in the source.
+6. NEVER propose dropping, merging, splitting, or reordering a bullet that exists in the master template. Existing bullet count per sub-section may only grow (via additions), never shrink.
+7. NEVER propose fabricated metrics or soft claims. If the source bullet says "reduced incident response time" without a number, do not propose "reduced incident response time by 60%". Numbers come only from source materials.
+8. TARGET is a two-page resume that is FULL. If the master template plus JD-relevant additions is shorter than two pages, propose ADDING more source-grounded bullets to fill it (in current role OR any previous-role sub-section where the real facts apply). If it exceeds two pages, propose dropping projects first (lowest-signal first), then skill category lines, and only as a last resort trim an ADDED experience bullet (never a master-template bullet).
 
 STYLE RULES for proposed rewrites (these carry downstream to the final resume):
 - No em-dashes (no "---", "--", " — ") in bullet text. Use commas, semicolons, or natural prepositions.
 - Each bullet follows: [action verb] + [what + specific tech] + [context] + [measurable impact]. Roughly 1.5 lines.
 - State WHAT was built and WHAT impact it had. Do not narrate internal architecture (auth middleware layers, consumer groups, session IDs, filter chains) — those details belong in interviews.
 - Match the sentence rhythm of the candidate's existing bullets in the provided LaTeX template — don't introduce a new voice.
-- Avoid filler ("leveraging", "utilizing", "hands-on experience", "proactively", "materially", "significantly improved", "cutting-edge", "robust", "seamless").
+- Avoid filler ("leveraging", "utilizing", "hands-on experience", "proactively", "materially", "significantly improved", "cutting-edge", "robust", "seamless", "enterprise-grade", "production-ready", "mentoring", "driving", "leading").
 
 OUTPUT FORMAT:
 You MUST respond with exactly these sections in this order:
