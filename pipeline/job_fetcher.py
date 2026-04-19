@@ -253,19 +253,38 @@ def fetch_job_from_url(url: str, progress_callback=None) -> dict:
     # Fallback: fetch HTML and extract with AI
     if not job_data:
         update("Fetching page content...")
-        html = _fetch_with_httpx(url)
 
-        if not html or len(html) < 200:
-            update("Direct fetch failed, trying with browser...")
-            html = _fetch_with_playwright(url)
+        # Known JS-rendered SPA hosts — skip httpx and go straight to browser
+        js_rendered_hosts = ("app.dover.com", "jobs.ashbyhq.com", "ashbyhq.com", "wellfound.com", "angel.co")
+        force_browser = any(host in url for host in js_rendered_hosts)
 
-        if not html or len(html) < 200:
+        html = ""
+        text = ""
+        if not force_browser:
+            html = _fetch_with_httpx(url)
+            text = _html_to_text(html) if html else ""
+
+        # Fall back to Playwright if we couldn't get real content.
+        # Key insight: SPAs return a large HTML shell (scripts + empty body),
+        # so raw-HTML length is a bad signal. Check the extracted TEXT length
+        # instead — a real job page has hundreds of chars of readable text.
+        if force_browser or len(text) < 400:
+            if force_browser:
+                update("JS-rendered host detected, using browser...")
+            else:
+                update("Page appears JS-rendered, retrying with browser...")
+            html_pw = _fetch_with_playwright(url)
+            text_pw = _html_to_text(html_pw) if html_pw else ""
+            if len(text_pw) > len(text):
+                html = html_pw
+                text = text_pw
+
+        if not html:
             result["error"] = "Could not fetch the page. Check the URL."
             return result
 
-        text = _html_to_text(html)
         if len(text) < 100:
-            result["error"] = "Could not extract text from the page."
+            result["error"] = "Could not extract readable text from the page (it may require JavaScript or authentication)."
             return result
 
         update("Extracting job details with AI...")
