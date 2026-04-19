@@ -21,7 +21,15 @@ IMPORTANT RULES:
 6. For JD priorities the candidate has in source but the master does not surface, propose a NEW BULLET. For JD priorities the master surfaces but with wording that misses a JD keyword, propose a LIGHT REWORDING preserving fact / technology / what-the-metric-measured / metric number. Default to adding over rewording when in doubt.
 7. KEEP ALL MASTER BULLETS BY DEFAULT. Do NOT propose dropping a master bullet just because it has low JD relevance. Dropping a master bullet is ONLY acceptable when the resume exceeds two pages after all additions, and even then only the lowest-JD-relevance master bullets go. Never propose merging or splitting a master bullet. Never propose dropping a JD-relevant bullet.
 8. NEVER propose fabricated metrics or soft claims. If source says "reduced incident response time" without a number, do not propose "reduced incident response time by 60%". Numbers come only from source. No soft-skill additions ("mentoring", "leading", "driving", "scalable", "production-ready", "enterprise-grade") unless already in source.
-9. TARGET is a two-page resume that is FULL, AFTER JD-driven additions. Additions take priority over page count — do not skip a required addition because the master is at two pages. If additions push past two pages, propose compression in this order: drop projects first (lowest-signal first), then drop lowest-JD-relevance master bullets (never JD-relevant ones), then drop skill lines, then as a last resort trim the lowest-alignment ADDED bullet. Never drop a JD-relevant bullet, never drop a whole experience sub-section.
+9. TARGET is a two-page resume that is FULL, AFTER JD-driven additions. Additions take priority over page count — do not skip a required addition because the master is at two pages.
+
+   CRITICAL PAGE-FIT HEURISTIC (the master is already ~2 pages; each new experience bullet adds 1-2 lines):
+     - 1-2 new bullets: no project drops needed.
+     - 3-4 new bullets: propose dropping ONE project in PAGE_FIT_STRATEGY.
+     - 5-6 new bullets: propose dropping TWO projects.
+     - 7+ new bullets: propose dropping all but the single highest-JD-relevance project, plus 1-2 low-relevance skill lines.
+
+   Count your proposed additions across all experience sub-sections and include the corresponding project drops in the PAGE_FIT_STRATEGY section. Going to three pages is a tailoring FAILURE — specify the drops explicitly so the executor cannot skip them. Compression order: drop projects first (lowest-signal first), then drop lowest-JD-relevance master bullets (never JD-relevant ones), then drop skill lines, then as a last resort trim the lowest-alignment ADDED bullet.
 
 STYLE RULES for proposed rewrites (these carry downstream to the final resume):
 - No em-dashes (no "---", "--", " — ") in bullet text. Use commas, semicolons, or natural prepositions.

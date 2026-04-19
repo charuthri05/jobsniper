@@ -55,12 +55,21 @@ TAILORING STRATEGY (apply to every JD — READ CAREFULLY):
 2. KEEP ALL EXISTING MASTER BULLETS BY DEFAULT.
    Every bullet in the master template stays. Do NOT drop a master bullet just because it has low JD relevance. Drop master bullets ONLY when the resume exceeds two pages after all additions (see rule 7 compression order), and even then only the LOWEST-JD-RELEVANCE master bullets go first. Never drop a JD-relevant master bullet.
 
-3. LIGHT REWORDING OF EXISTING MASTER BULLETS — OPTIONAL, WITH INVARIANTS.
+3. LIGHT REWORDING OF EXISTING MASTER BULLETS — OPTIONAL, WITH STRICT INVARIANTS.
    You may lightly reword an existing master bullet to surface a JD keyword the bullet's real facts support. Invariants:
      a. Underlying fact, technology, and what the metric measured do not change. "Reduced unauthorized access attempts by 92%" stays about unauthorized access. Do not reframe "case management usability" as "design workflow efficiency".
-     b. Metric number preserved exactly. If source has no number, output has no number.
+     b. Metric number preserved exactly. If source has no number, output has no number. NEVER drop a metric that is in the source.
      c. No filler or soft-skill additions ("scalable", "production-ready", "enterprise-grade", "mentoring junior engineers", "leading teams", "driving cross-functional discussions") unless already in source.
      d. If you cannot reword without violating (a)-(c), leave the bullet verbatim.
+
+   CONCRETE BAD EXAMPLE (do not do this):
+     Source bullet: "Implemented ML-powered search algorithms to improve legal document retrieval, increasing search relevance by 30%."
+     BAD rewording (for a detection-engineering JD): "Built ML-powered anomaly detection for legal document classification using text embeddings and semantic similarity algorithms, identifying suspicious document patterns related to fraud detection and improving case outcome predictions."
+     Why bad:
+       - Changed the system's purpose from "search retrieval" to "anomaly detection / fraud detection" (changes what was built).
+       - Dropped the 30% metric entirely.
+       - Introduced "fraud detection" which is not in source materials (fabricated scope).
+     ACCEPTABLE alternative: either leave verbatim, or "Implemented ML-powered semantic search algorithms for legal document retrieval using text embeddings, increasing search relevance by 30%." (keeps fact, keeps metric, just adds the specific ML technique which source confirms). If even that is a stretch, leave verbatim.
 
 4. PROJECTS — BULLETS VERBATIM, DROP WHOLE PROJECTS FOR SPACE.
    Never reword project bullets. If space requires compression, drop a whole project sub-section (lowest JD-signal first). Never trim individual bullets inside a kept project.
@@ -73,11 +82,15 @@ TAILORING STRATEGY (apply to every JD — READ CAREFULLY):
 7. TARGET IS TWO FULL PAGES, AFTER JD-DRIVEN ADDITIONS.
    JD-relevant additions take priority over page count. Do NOT skip a required addition because the master is already at two pages — add the bullet first, then compress other content to make room.
 
-   Workflow:
-     Step 1: Apply all JD-driven additions (rule 1) and light rewording (rule 3).
-     Step 2: Check page count. If at two pages, stop. If short, add more source-grounded bullets. If long, compress.
+   CRITICAL HEURISTIC — YOU CANNOT SEE THE COMPILED PAGE COUNT, SO USE THIS RULE:
+   The master template fills approximately two pages by itself. Each additional experience bullet adds roughly 1-2 lines. Therefore:
+     - If you add 1-2 new experience bullets total (across all experience sections), the output will likely still fit in two pages. No project drops required.
+     - If you add 3-4 new experience bullets total, you MUST drop ONE project entirely to make room.
+     - If you add 5-6 new experience bullets total, you MUST drop TWO projects entirely.
+     - If you add 7+ new experience bullets total, drop all projects except the single highest-JD-relevance one, and consider dropping 1-2 skill lines.
+   Count your additions before finalizing the output. Drop projects proactively per this rule. Going to three pages is a FAILURE and must not happen.
 
-   Compression order when over two pages (stop at the first step that fits):
+   Compression order when overflow is expected (stop at the first step that fits):
      a. Drop one project entirely (lowest JD-signal first — for non-systems roles drop Taco-DB first; for non-cloud/monitoring roles drop URL Shortener first; drop Real-Time Chat last).
      b. Drop a second project entirely.
      c. Drop the lowest-JD-relevance master bullets from experience sub-sections (bullets whose technology and domain have no connection to JD priorities). Never drop a JD-relevant master bullet. Never reduce a sub-section to zero bullets.
@@ -88,6 +101,7 @@ TAILORING STRATEGY (apply to every JD — READ CAREFULLY):
    NEVER drop a whole experience sub-section.
    NEVER drop a JD-relevant bullet (master or added).
    NEVER merge or split a master bullet.
+   NEVER let the output exceed two pages.
 
 8. NO FABRICATION (ABSOLUTE, APPLIES EVERYWHERE).
    Never invent metrics, technologies, responsibilities, or soft claims. If source has no number, output has no number. Never add "99.9% uptime", "mentoring junior engineers", "leading teams", "enterprise-grade", "production-ready", "driving cross-functional collaboration" unless verbatim in source.
