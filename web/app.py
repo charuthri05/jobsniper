@@ -562,7 +562,7 @@ def api_scrape():
         return jsonify({"error": "Scrape already in progress"}), 409
 
     _scrape_progress["current"] = 0
-    _scrape_progress["total"] = 4
+    _scrape_progress["total"] = 5  # 3 scrapers + normalize + score
     _scrape_progress["status"] = "running"
     _scrape_progress["message"] = "Starting scrapers..."
     _scrape_progress["stats"] = None
@@ -612,18 +612,36 @@ def api_scrape():
                     _scrape_progress["current"] = sources_done
                     _scrape_progress["message"] = f"Source error: {e}"
 
-        # Normalize and insert
-        _scrape_progress["current"] = 3
+        # Step 4: Normalize and insert
+        _scrape_progress["current"] = 4
+        _scrape_progress["total"] = 5
         _scrape_progress["message"] = f"Normalizing {len(all_jobs)} jobs..."
         try:
             stats = normalize_and_insert(all_jobs)
             _scrape_progress["stats"] = stats
             _scrape_progress["message"] = (
-                f"Done: {stats['new']} new jobs added, "
-                f"{stats['duplicates']} duplicates skipped"
+                f"Scraped: {stats['new']} new jobs. Starting AI scoring..."
             )
         except Exception as e:
             _scrape_progress["message"] = f"Normalize error: {e}"
+            _scrape_progress["status"] = "done"
+            return
+
+        # Step 5: Auto-score new jobs
+        if stats.get("new", 0) > 0:
+            _scrape_progress["current"] = 5
+            _scrape_progress["message"] = f"Scoring {stats['new']} new jobs with AI..."
+            try:
+                from pipeline.scorer import score_all_new_jobs
+                profile = load_profile()
+                score_stats = score_all_new_jobs(profile, prefs)
+                _scrape_progress["message"] = (
+                    f"Done: {stats['new']} scraped, "
+                    f"{score_stats.get('queued', 0)} passed scoring, "
+                    f"{score_stats.get('filtered_out', 0)} filtered"
+                )
+            except Exception as e:
+                _scrape_progress["message"] = f"Scoring error: {e}. Jobs available in Unscored tab."
 
         _scrape_progress["status"] = "done"
 
@@ -645,6 +663,89 @@ def api_scrape_progress():
             time.sleep(0.5)
     return Response(stream(), mimetype="text/event-stream")
 
+
+# ---------------------------------------------------------------------------
+# API — LinkedIn Referral Intelligence
+# ---------------------------------------------------------------------------
+
+_linkedin_sync_progress = {"status": "idle", "message": ""}
+
+
+@app.route("/api/linkedin/sync", methods=["POST"])
+def api_linkedin_sync():
+    """Sync all LinkedIn 1st-degree connections to local cache."""
+    if _linkedin_sync_progress["status"] == "running":
+        return jsonify({"error": "Sync already in progress"}), 409
+
+    _linkedin_sync_progress["status"] = "running"
+    _linkedin_sync_progress["message"] = "Starting sync..."
+
+    def run_sync():
+        try:
+            from networking.referral_finder import sync_connections
+            def progress_cb(msg):
+                _linkedin_sync_progress["message"] = msg
+            result = sync_connections(progress_callback=progress_cb)
+            _linkedin_sync_progress["message"] = f"Synced {result['total']} connections"
+        except Exception as e:
+            _linkedin_sync_progress["message"] = f"Error: {e}"
+        _linkedin_sync_progress["status"] = "done"
+
+    thread = threading.Thread(target=run_sync, daemon=True)
+    thread.start()
+    return jsonify({"status": "started"})
+
+
+@app.route("/api/linkedin/sync/progress")
+def api_linkedin_sync_progress():
+    """SSE for sync progress."""
+    def stream():
+        import time
+        while True:
+            yield f"data: {json.dumps(_linkedin_sync_progress)}\n\n"
+            if _linkedin_sync_progress["status"] in ("done", "idle"):
+                break
+            time.sleep(1)
+    return Response(stream(), mimetype="text/event-stream")
+
+
+@app.route("/api/linkedin/status")
+def api_linkedin_status():
+    """Get LinkedIn connection sync status."""
+    from networking.referral_finder import get_sync_status
+    status = get_sync_status()
+    has_cookie = bool(os.environ.get("LINKEDIN_SESSION_COOKIE", ""))
+    return jsonify({**status, "has_cookie": has_cookie})
+
+
+@app.route("/api/job/<job_id>/referrals")
+def api_job_referrals(job_id):
+    """Get referral suggestions for a specific job (instant, from cache)."""
+    job = get_job_by_id(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    from networking.referral_finder import get_referrals_for_job
+    referrals = get_referrals_for_job(job)
+    return jsonify(referrals)
+
+
+@app.route("/api/job/<job_id>/referrals/deep", methods=["POST"])
+def api_job_referrals_deep(job_id):
+    """On-demand deep search for 2nd-degree connections and recruiters.
+    Makes 2-3 LinkedIn API calls — use sparingly."""
+    job = get_job_by_id(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    from networking.referral_finder import search_deep_connections
+    result = search_deep_connections(job.get("company", ""))
+    return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# API — Board Discovery
+# ---------------------------------------------------------------------------
 
 _discover_progress = {"status": "idle", "message": "", "results": None}
 

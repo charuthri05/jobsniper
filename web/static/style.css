@@ -1,14 +1,29 @@
-/* Job Pipeline Dashboard — Clean Modern UI */
+/* ─────────────────────────────────────────────────────────────
+   JobSniper — Clean Modern UI
+   ───────────────────────────────────────────────────────────── */
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: #f8f9fa;
 }
 
-/* Sticky action bar (tabs + buttons) */
+/* ─── Navbar ──────────────────────────────────────────────── */
+
+.navbar {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+}
+
+.navbar-brand {
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+}
+
+/* ─── Sticky Action Bar (Dashboard) ──────────────────────── */
+
 .action-bar {
     position: sticky;
-    top: 56px; /* below navbar */
+    top: 52px; /* below navbar */
     z-index: 20;
     background: #f8f9fa;
     padding-top: 12px;
@@ -20,16 +35,62 @@ body {
     padding-right: 1.5rem;
 }
 
-/* Sticky table header */
+/* Horizontally scrollable tabs on narrow screens */
+.tab-scroll-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    min-width: 0; /* allow shrinking in flex */
+}
+
+.tab-scroll-wrap::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+/* ─── Nav Pills ──────────────────────────────────────────── */
+
+.nav-pills .nav-link {
+    color: #495057;
+    font-weight: 500;
+    font-size: 0.88rem;
+    padding: 0.4rem 1rem;
+    border-radius: 8px;
+    transition: all 0.15s;
+}
+
+.nav-pills .nav-link:hover {
+    background-color: #e9ecef;
+}
+
+.nav-pills .nav-link.active {
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* ─── Action Buttons ─────────────────────────────────────── */
+
+#action-buttons .btn {
+    font-size: 0.83rem;
+    padding: 0.35rem 0.75rem;
+}
+
+/* ─── Job Table ──────────────────────────────────────────── */
+
+/* IMPORTANT: Do NOT use overflow-x:auto on this wrapper —
+   it creates a scroll container that breaks sticky th positioning. */
+.table-wrap {
+    overflow: visible;
+}
+
 .sticky-header th {
     position: sticky;
-    top: 112px; /* below navbar + action bar */
+    top: 112px; /* navbar (~52px) + action-bar (~60px) */
     z-index: 10;
     background: #f8f9fa;
     border-bottom: 2px solid #dee2e6;
 }
 
-/* Table */
 #job-table {
     border-collapse: separate;
     border-spacing: 0;
@@ -48,7 +109,7 @@ body {
     background-color: #e3f2fd !important;
 }
 
-/* Sortable column headers */
+/* Sortable columns */
 .sortable {
     cursor: pointer;
     user-select: none;
@@ -59,29 +120,12 @@ body {
 }
 
 /* Score badges */
-.score-high {
-    background-color: #d1e7dd;
-    color: #0f5132;
-    font-weight: 600;
-}
+.score-high { background-color: #d1e7dd; color: #0f5132; font-weight: 600; }
+.score-mid  { background-color: #fff3cd; color: #664d03; font-weight: 600; }
+.score-low  { background-color: #f8d7da; color: #842029; font-weight: 600; }
 
-.score-mid {
-    background-color: #fff3cd;
-    color: #664d03;
-    font-weight: 600;
-}
-
-.score-low {
-    background-color: #f8d7da;
-    color: #842029;
-    font-weight: 600;
-}
-
-/* Cover letter / resume column indicators */
-.cl-empty {
-    color: #dee2e6;
-    font-size: 0.9rem;
-}
+/* CL / CV column icons */
+.cl-empty { color: #dee2e6; font-size: 0.9rem; }
 
 .dl-ready {
     color: #198754;
@@ -99,126 +143,24 @@ body {
     align-items: center;
 }
 
-/* Row generating state — subtle amber left border + light bg */
+/* Row states */
 #job-table tbody tr.row-generating {
     border-left: 3px solid #ffc107;
     background-color: #fffdf5 !important;
 }
 
-/* Row failed state — red left border */
 #job-table tbody tr.row-failed {
     border-left: 3px solid #dc3545;
     background-color: #fff8f8 !important;
 }
 
-/* Completed flash animation */
 @keyframes rowCompleted {
-    0% { background-color: #d4edda; }
+    0%   { background-color: #d4edda; }
     100% { background-color: transparent; }
 }
 
 #job-table tbody tr.row-just-completed {
     animation: rowCompleted 1.5s ease-out;
-}
-
-/* Nav pills custom */
-.nav-pills .nav-link {
-    color: #495057;
-    font-weight: 500;
-    font-size: 0.9rem;
-    padding: 0.4rem 1rem;
-    border-radius: 8px;
-}
-
-.nav-pills .nav-link.active {
-    background-color: #0d6efd;
-    color: white;
-}
-
-/* Action buttons */
-#action-buttons .btn {
-    font-size: 0.85rem;
-    padding: 0.35rem 0.75rem;
-}
-
-/* Progress bar */
-#progress-container {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 12px 16px;
-}
-
-/* Detail modal */
-#detailModal .modal-content {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-}
-
-#detailModal .modal-header {
-    border-bottom: 1px solid #f0f0f0;
-    padding: 1.25rem 1.5rem;
-}
-
-#detailModal .modal-body {
-    padding: 1.5rem;
-}
-
-/* Confirm modal */
-#confirmModal .modal-content {
-    border: none;
-    border-radius: 12px;
-}
-
-/* Toast */
-.toast {
-    border: none;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-/* Table checkbox */
-.form-check-input {
-    cursor: pointer;
-    width: 1.1em;
-    height: 1.1em;
-}
-
-/* Expand row arrow */
-.expand-icon {
-    transition: transform 0.2s;
-    color: #adb5bd;
-}
-
-.expand-icon:hover {
-    color: #0d6efd;
-}
-
-/* Generation results modal */
-.gen-result-card {
-    border-radius: 8px !important;
-    overflow: hidden;
-    transition: box-shadow 0.15s;
-}
-
-.gen-result-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-#genResultsModal .modal-content {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-}
-
-#genResultsModal .modal-header {
-    border-bottom: 1px solid #f0f0f0;
-    padding: 1.25rem 1.5rem;
-}
-
-#genResultsModal .modal-body {
-    padding: 1.5rem;
 }
 
 /* Row quick-action icons */
@@ -229,20 +171,74 @@ body {
     text-decoration: none;
 }
 
-.row-action:hover {
-    opacity: 1;
-    transform: scale(1.2);
+.row-action:hover { opacity: 1; transform: scale(1.2); }
+#job-table tbody tr:hover .row-action { opacity: 0.7; }
+#job-table tbody tr:hover .row-action:hover { opacity: 1; }
+
+/* ─── Progress Bar ───────────────────────────────────────── */
+
+#progress-container {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 12px 16px;
 }
 
-#job-table tbody tr:hover .row-action {
-    opacity: 0.7;
+/* ─── Modals ─────────────────────────────────────────────── */
+
+#detailModal .modal-content,
+#genResultsModal .modal-content,
+#resumeResultsModal .modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
 }
 
-#job-table tbody tr:hover .row-action:hover {
-    opacity: 1;
+#detailModal .modal-header,
+#genResultsModal .modal-header {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 1.25rem 1.5rem;
 }
 
-/* "Did you apply?" floating prompt */
+#detailModal .modal-body,
+#genResultsModal .modal-body {
+    padding: 1.5rem;
+}
+
+#confirmModal .modal-content {
+    border: none;
+    border-radius: 12px;
+}
+
+/* Generation results */
+.gen-result-card {
+    border-radius: 8px !important;
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+}
+
+.gen-result-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* ─── Toast ──────────────────────────────────────────────── */
+
+.toast {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* ─── Checkbox ───────────────────────────────────────────── */
+
+.form-check-input {
+    cursor: pointer;
+    width: 1.1em;
+    height: 1.1em;
+}
+
+/* ─── "Did you apply?" floating prompt ───────────────────── */
+
 .apply-prompt {
     position: fixed;
     top: 60px;
@@ -261,17 +257,474 @@ body {
 
 @keyframes slideDown {
     from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* ─── Pipeline dropdown ──────────────────────────────────── */
+
+.dropdown-menu {
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    border-radius: 10px;
+    padding: 0.5rem;
+}
+
+.dropdown-item {
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.dropdown-item:hover {
+    background-color: #f0f6ff;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SETUP PAGE
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── Setup Sidebar ──────────────────────────────────────── */
+
+.setup-sidebar {
+    position: sticky;
+    top: 80px;
+}
+
+.setup-sidebar .nav-pills .nav-link {
+    text-align: left;
+    padding: 0.65rem 1rem;
+    margin-bottom: 4px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #495057;
+    transition: all 0.15s;
+}
+
+.setup-sidebar .nav-pills .nav-link:hover {
+    background-color: #e9ecef;
+    color: #212529;
+}
+
+.setup-sidebar .nav-pills .nav-link.active {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.setup-sidebar .nav-pills .nav-link i {
+    width: 20px;
+    text-align: center;
+}
+
+/* ─── Setup Section Cards ────────────────────────────────── */
+
+.setup-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    padding: 28px;
+}
+
+.section-header {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.section-header h5 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+/* ─── Dynamic Entries (Experience / Education) ───────────── */
+
+.dynamic-entry {
+    border-left: 3px solid #0d6efd;
+    background: #f8f9fa;
+    border-radius: 0 8px 8px 0;
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.btn-remove-entry {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+
+.btn-remove-entry:hover {
+    background: #fee;
+}
+
+/* ─── Upload Zone ────────────────────────────────────────── */
+
+.upload-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 16px;
+    padding: 48px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fafbfc;
+}
+
+.upload-zone:hover,
+.upload-zone.dragover {
+    border-color: #0d6efd;
+    background: #f0f6ff;
+}
+
+.upload-zone i {
+    font-size: 3rem;
+    color: #adb5bd;
+}
+
+.upload-zone:hover i,
+.upload-zone.dragover i {
+    color: #0d6efd;
+}
+
+/* ─── Step Indicator ─────────────────────────────────────── */
+
+.step-indicator {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.step-dot.active  { background: #0d6efd; color: white; }
+.step-dot.done    { background: #198754; color: white; }
+.step-dot.pending { background: #e9ecef; color: #6c757d; }
+
+.step-line       { width: 40px; height: 2px; background: #dee2e6; transition: background 0.2s; }
+.step-line.done  { background: #198754; }
+
+/* ─── Parsing Spinner ────────────────────────────────────── */
+
+.parsing-overlay {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.parsing-overlay .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* ─── AI-filled highlight ────────────────────────────────── */
+
+.ai-filled {
+    border-color: #86b7fe;
+    background-color: #f0f6ff;
+    transition: border-color 0.5s, background-color 0.5s;
+}
+
+/* ─── Tag Input ──────────────────────────────────────────── */
+
+.tag-input {
+    font-family: inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   APPLY PAGE
+   ═══════════════════════════════════════════════════════════ */
+
+.copy-field {
+    position: relative;
+}
+
+.copy-btn {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: #6c757d;
+    transition: all 0.15s;
+}
+
+.copy-btn:hover {
+    background: #e9ecef;
+    color: #0d6efd;
+}
+
+.copy-btn.copied {
+    background: #d1e7dd;
+    color: #0f5132;
+    border-color: #a3cfbb;
+}
+
+.field-value {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px 14px;
+    padding-right: 70px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    word-break: break-all;
+}
+
+.field-value-lg {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 14px;
+    padding-right: 70px;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.section-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    padding: 24px;
+    margin-bottom: 16px;
+}
+
+.go-btn {
+    font-size: 1.1rem;
+    padding: 14px 32px;
+    border-radius: 10px;
+}
+
+.source-badge {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MODERN POLISH — Transitions & Micro-interactions
+   ═══════════════════════════════════════════════════════════ */
+
+/* Smooth transitions on interactive elements */
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:active {
+    transform: scale(0.97);
+}
+
+/* Nav pills — slide-in active indicator feel */
+.nav-pills .nav-link {
+    transition: all 0.2s ease;
+}
+
+/* Card hover lift */
+.setup-section {
+    transition: box-shadow 0.2s ease;
+}
+
+.setup-section:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Modal entrance */
+.modal.fade .modal-dialog {
+    transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+    transform: translateY(-10px) scale(0.98);
+}
+
+.modal.show .modal-dialog {
+    transform: translateY(0) scale(1);
+}
+
+/* Table row fade-in on load */
+@keyframes fadeInRow {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+#job-table tbody tr {
+    animation: fadeInRow 0.25s ease-out;
+}
+
+/* Progress bar pulse animation */
+.progress-bar-animated {
+    animation: progress-bar-stripes 0.8s linear infinite, progressPulse 2s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.85; }
+}
+
+/* Toast slide-in from right */
+.toast {
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+/* Score badge glow on high scores */
+.score-high {
+    box-shadow: 0 0 0 2px rgba(25, 135, 84, 0.15);
+}
+
+/* Upload zone breathing animation on dragover */
+.upload-zone.dragover {
+    animation: breathe 1.5s ease-in-out infinite;
+}
+
+@keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.01); }
+}
+
+/* Smooth input focus */
+.form-control, .form-select {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Dynamic entry slide-in */
+.dynamic-entry {
+    animation: slideInLeft 0.25s ease-out;
+}
+
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+
+/* Small screens (phones) */
+@media (max-width: 576px) {
     .container-fluid {
-        padding-left: 12px !important;
-        padding-right: 12px !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+
+    .action-bar {
+        margin-left: -10px;
+        margin-right: -10px;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    /* Stack action buttons below tabs */
+    .action-bar > .d-flex {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px !important;
     }
 
     #action-buttons {
         flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    /* Setup sidebar → horizontal scroll */
+    .setup-sidebar {
+        position: static;
+    }
+
+    .setup-sidebar .nav-pills {
+        flex-direction: row !important;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        gap: 4px;
+        padding-bottom: 8px;
+        scrollbar-width: none;
+    }
+
+    .setup-sidebar .nav-pills::-webkit-scrollbar {
+        display: none;
+    }
+
+    .setup-sidebar .nav-pills .nav-link {
+        white-space: nowrap;
+        font-size: 0.82rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .setup-sidebar .d-grid {
+        display: flex !important;
+        gap: 8px;
+    }
+
+    .setup-section {
+        padding: 20px;
+    }
+
+    /* Shrink table font */
+    #job-table {
+        font-size: 0.85rem;
     }
 }
+
+/* Medium screens (tablets) */
+@media (min-width: 577px) and (max-width: 991px) {
+    #action-buttons {
+        flex-wrap: wrap;
+    }
+
+    .setup-sidebar {
+        position: static;
+        margin-bottom: 1rem;
+    }
+
+    .setup-sidebar .nav-pills {
+        flex-direction: row !important;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 4px;
+        scrollbar-width: none;
+    }
+
+    .setup-sidebar .nav-pills::-webkit-scrollbar {
+        display: none;
+    }
+
+    .setup-sidebar .nav-pills .nav-link {
+        white-space: nowrap;
+    }
+
+    .setup-sidebar .d-grid {
+        display: flex !important;
+        gap: 8px;
+    }
+}
+
+/* Large screens */
+@media (min-width: 992px) {
+    .setup-sidebar {
+        position: sticky;
+        top: 80px;
+    }
+}
+
+/* Recruiter badge color */
+.bg-purple-subtle { background-color: #e8daef; }
+.text-purple { color: #7b2d8e; }

@@ -518,6 +518,9 @@ async function openDetail(jobId) {
         const desc = job.description || 'No description available';
         document.getElementById('detail-description').textContent = desc;
 
+        // Load referral connections
+        loadReferrals(job.id);
+
         new bootstrap.Modal(document.getElementById('detailModal')).show();
     } catch (err) {
         showToast('Failed to load job details', 'error');
@@ -1679,4 +1682,187 @@ function showAutofillResults(results) {
 
     document.getElementById('autofill-results-body').innerHTML = html;
     new bootstrap.Modal(document.getElementById('autofillResultsModal')).show();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LinkedIn Referral Intelligence
+// ═══════════════════════════════════════════════════════════════
+
+// Check LinkedIn sync status on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const resp = await fetch('/api/linkedin/status');
+        const data = await resp.json();
+        const label = document.getElementById('linkedin-sync-label');
+        if (data.synced) {
+            label.textContent = `${data.count} contacts`;
+        } else if (!data.has_cookie) {
+            label.textContent = 'No cookie';
+            document.getElementById('btn-linkedin-sync').title = 'Set LINKEDIN_SESSION_COOKIE in .env first';
+        }
+    } catch(e) {}
+});
+
+async function syncLinkedIn() {
+    const btn = document.getElementById('btn-linkedin-sync');
+    const label = document.getElementById('linkedin-sync-label');
+    btn.disabled = true;
+    label.innerHTML = '<span class="spinner-border spinner-border-sm me-1" style="width:0.7rem;height:0.7rem;"></span>Syncing...';
+
+    try {
+        const resp = await fetch('/api/linkedin/sync', {method: 'POST'});
+        if (resp.status === 409) {
+            showToast('Sync already in progress', 'warning');
+            btn.disabled = false;
+            return;
+        }
+
+        const evtSource = new EventSource('/api/linkedin/sync/progress');
+        evtSource.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            label.textContent = data.message;
+
+            if (data.status === 'done') {
+                evtSource.close();
+                btn.disabled = false;
+                showToast(data.message, 'success');
+                // Update label with count
+                setTimeout(async () => {
+                    const resp = await fetch('/api/linkedin/status');
+                    const status = await resp.json();
+                    label.textContent = `${status.count} contacts`;
+                }, 500);
+            }
+        };
+
+        evtSource.onerror = () => {
+            evtSource.close();
+            btn.disabled = false;
+            label.textContent = 'Sync failed';
+        };
+    } catch(e) {
+        showToast('Sync failed: ' + e.message, 'error');
+        btn.disabled = false;
+        label.textContent = 'Sync Network';
+    }
+}
+
+async function loadReferrals(jobId) {
+    const container = document.getElementById('referral-content');
+    const deepBtn = document.getElementById('btn-deep-search');
+    container.innerHTML = '<div class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Checking your network...</div>';
+    deepBtn.style.display = 'none';
+
+    try {
+        const resp = await fetch(`/api/job/${jobId}/referrals`);
+        const data = await resp.json();
+
+        if (!data.sync_status.synced) {
+            container.innerHTML = `
+                <div class="alert alert-secondary py-2 small mb-0">
+                    <i class="bi bi-linkedin me-1"></i>
+                    Click <strong>"Sync Network"</strong> in the top bar to import your LinkedIn connections.
+                    Then we'll show who you know at each company.
+                </div>`;
+            return;
+        }
+
+        if (!data.has_connections) {
+            container.innerHTML = `
+                <div class="text-muted small">
+                    <i class="bi bi-person-x me-1"></i>No 1st-degree connections found at this company.
+                </div>`;
+            deepBtn.style.display = 'inline-block';
+            return;
+        }
+
+        let html = '';
+        data.connections.forEach(c => {
+            const typeIcon = c.contact_type === 'recruiter'
+                ? '<span class="badge bg-purple-subtle text-purple">Recruiter</span>'
+                : c.contact_type === 'hiring_manager'
+                ? '<span class="badge bg-warning-subtle text-warning">Manager</span>'
+                : '<span class="badge bg-primary-subtle text-primary">1st</span>';
+
+            const linkedinLink = c.linkedin_url
+                ? `<a href="${c.linkedin_url}" target="_blank" class="text-muted ms-2" title="View profile"><i class="bi bi-linkedin"></i></a>`
+                : '';
+
+            html += `
+                <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+                    <div>
+                        <strong class="small">${escapeHtml(c.name)}</strong>${linkedinLink}
+                        <div class="text-muted" style="font-size:0.8rem;">${escapeHtml(c.headline || '')}</div>
+                    </div>
+                    <div>${typeIcon}</div>
+                </div>`;
+        });
+
+        container.innerHTML = html;
+        deepBtn.style.display = 'inline-block';
+
+    } catch(e) {
+        container.innerHTML = '<div class="text-muted small">Could not load referrals</div>';
+    }
+}
+
+async function deepSearchReferrals() {
+    if (!currentDetailJob) return;
+
+    const btn = document.getElementById('btn-deep-search');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Searching...';
+
+    try {
+        const resp = await fetch(`/api/job/${currentDetailJob.id}/referrals/deep`, {method: 'POST'});
+        const data = await resp.json();
+
+        const container = document.getElementById('referral-content');
+        let existing = container.innerHTML;
+
+        if (data.connections && data.connections.length > 0) {
+            let html = '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-medium">2nd-degree connections:</small></div>';
+            data.connections.forEach(c => {
+                if (c.connection_degree >= 2) {
+                    const degree = c.connection_degree === 2 ? '2nd' : '3rd';
+                    html += `
+                        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+                            <div>
+                                <strong class="small">${escapeHtml(c.name)}</strong>
+                                ${c.linkedin_url ? `<a href="${c.linkedin_url}" target="_blank" class="text-muted ms-2"><i class="bi bi-linkedin"></i></a>` : ''}
+                                <div class="text-muted" style="font-size:0.8rem;">${escapeHtml(c.headline || '')}</div>
+                            </div>
+                            <span class="badge bg-secondary-subtle text-secondary">${degree}</span>
+                        </div>`;
+                }
+            });
+            container.innerHTML += html;
+        }
+
+        if (data.recruiters && data.recruiters.length > 0) {
+            let html = '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-medium">Recruiters:</small></div>';
+            data.recruiters.forEach(r => {
+                html += `
+                    <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+                        <div>
+                            <strong class="small">${escapeHtml(r.name)}</strong>
+                            ${r.linkedin_url ? `<a href="${r.linkedin_url}" target="_blank" class="text-muted ms-2"><i class="bi bi-linkedin"></i></a>` : ''}
+                            <div class="text-muted" style="font-size:0.8rem;">${escapeHtml(r.headline || '')}</div>
+                        </div>
+                        <span class="badge bg-purple-subtle text-purple">Recruiter</span>
+                    </div>`;
+            });
+            container.innerHTML += html;
+        }
+
+        if ((!data.connections || data.connections.length === 0) && (!data.recruiters || data.recruiters.length === 0)) {
+            container.innerHTML += '<div class="text-muted small mt-2">No 2nd-degree connections or recruiters found.</div>';
+        }
+
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Done';
+    } catch(e) {
+        showToast('Deep search failed: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-search me-1"></i>Find 2nd-Degree';
+    }
 }

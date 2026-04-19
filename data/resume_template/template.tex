@@ -1,1 +1,245 @@
+%-------------------------
+% Resume in Latex
+% Author : Jake Gutierrez
+% Based off of: https://github.com/sb2nov/resume
+% License : MIT
+%------------------------
 
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{fontawesome5}
+\usepackage{multicol}
+\setlength{\multicolsep}{-3.0pt}
+\setlength{\columnsep}{-1pt}
+\input{glyphtounicode}
+
+% Ensure section headings are NOT numbered (fixes "1 Summary", "2 Experience", etc.)
+\setcounter{secnumdepth}{0}
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.6in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1.19in}
+\addtolength{\topmargin}{-.7in}
+\addtolength{\textheight}{1.4in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting (more stable spacing)
+\titleformat{\section}{
+  \vspace{2pt}\scshape\raggedright\large\bfseries
+}{}{0em}{}[\color{black}\titlerule \vspace{-3pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-1pt}}
+  }
+}
+
+\newcommand{\classesList}[4]{
+  \item\small{
+    {#1 #2 #3 #4 \vspace{-1pt}}
+  }
+}
+
+% More stable subheading spacing/alignment
+\newcommand{\resumeSubheading}[4]{
+  \vspace{2pt}\item
+    \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & \textbf{\small #2} \\
+      \textit{\small #3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-3pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+  \item
+    \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small #1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-3pt}
+}
+
+% Project heading width fixed to prevent overflow/overlap
+\newcommand{\resumeProjectHeading}[2]{
+  \item
+    \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
+      \small #1 & \textbf{\small #2} \\
+    \end{tabular*}\vspace{-3pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-3pt}}
+
+\renewcommand\labelitemi{$\vcenter{\hbox{\tiny$\bullet$}}$}
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.0in, label={}, itemsep=2pt]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.2in, itemsep=2pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-2pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%----------HEADING----------
+\begin{center}
+    {\Huge \scshape Charuthri Abburi} \\ \vspace{6pt}
+    \small
+    \faPhone\ 716-609-3740 \quad
+    \faEnvelope\ \href{mailto:charuthriabburi05@gmail.com}{charuthriabburi05@gmail.com} \quad
+    \faLinkedin\ \href{https://www.linkedin.com/in/charuthri-abburi-522841178/}{linkedin.com/in/charuthri-abburi}
+\end{center}
+
+%-----------SUMMARY-----------
+\section{Summary}
+\small
+\textbf{Software Engineer with 3+ years of experience} in full-stack development and distributed systems. Demonstrated expertise in designing and implementing \textbf{scalable microservice architectures} processing \textbf{150K+ requests per minute}. Strong technical background in \textbf{backend optimization}, \textbf{database performance tuning}, and \textbf{system monitoring visualization}. Adept at solving complex engineering challenges through \textbf{system design principles} and \textbf{data-driven decision making}. Core technical skills include \textbf{Java}, \textbf{Python}, \textbf{Node.js}, \textbf{PostgreSQL}, \textbf{Redis}, \textbf{AWS}, and \textbf{React}, with a focus on building resilient applications that scale efficiently while maintaining exceptional performance and reliability
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+\resumeSubHeadingListStart
+
+  \resumeSubheading
+    {Linq}{April 2025 -- Present}
+    {Software Engineer}{Birmingham, USA}
+    \resumeItemListStart
+      \resumeItem{Architected integration services connecting Linq with \textbf{Salesforce, HubSpot and GoHighLevel CRMs}, processing \textbf{150K+ requests/minute} while enabling seamless contact and messaging synchronization for 40K+ users.}
+
+      \resumeItem{Extracted contact management from \textbf{Ruby on Rails} monolith to dedicated microservice using \textbf{Node.js/OpenSearch} after database became bottleneck at 17M+ contacts, achieving \textbf{20x search performance} and reducing PostgreSQL load by 40\%.}
+      
+      \resumeItem{Implemented distributed rate limiting with \textbf{Redis sorted sets} to protect automation requests during marketing campaigns, setting client-specific thresholds that prevented of potential API failures during \textbf{3x traffic spikes}.}
+      
+      \resumeItem{Optimized \textbf{PostgreSQL query performance} through composite indexes and materialized views, transforming 2.3-second message retrieval queries to \textbf{sub-50ms responses} without schema changes.}
+    \resumeItem{Engineered enterprise-grade \textbf{observability and telemetry system} using \textbf{Grafana dashboards} with \textbf{ClickHouse, Mimier, and InfluxDB} data sources, providing real-time visualization of system metrics, traffic patterns, error rates, and server performance that reduced incident response time.}
+      
+      \resumeItem{Developed efficient \textbf{two-way contact sync engine} between Linq and CRMs using incremental updates and custom conflict resolution, eliminating redundant API calls and reducing sync time from 15 minutes to \textbf{30 seconds}.}
+
+      \resumeItem{Developed key \textbf{React frontend components} including iframe-based modules for dialer interface, analytics dashboards, and settings configuration pages that improved user experience and workflow efficiency.}
+      
+      \resumeItem{Automated deployment workflow with \textbf{GitHub Actions, Docker and AWS ECS}, enabling continuous deployment of microservices with canary releases and automatic rollbacks based on error rate thresholds.}
+    \resumeItemListEnd
+  \resumeSubheading
+      {OpenText}{September 2021 -- July 2023}
+      {Associate Software Engineer}{Hyderabad, India}
+
+    \resumeSubSubheading{Enterprise-Grade Document Intelligence System (EDIS)}{January 2023 -- July 2023}
+    \resumeItemListStart
+      \resumeItem{Implemented document processing and retrieval APIs using \textbf{Java} and \textbf{Spring Boot}, enabling efficient handling of large-scale enterprise documents, optimizing API response times by \textbf{3.2x}.}
+      \resumeItem{Designed \textbf{role-based authentication} using \textbf{JWT, OAuth 2.0}, ensuring secure access control and improving compliance with enterprise security standards.}
+      \resumeItem{Enhanced database query structuring and incorporated caching, reducing redundant queries and improving response efficiency by \textbf{60\%}.}
+      \resumeItem{Developed an \textbf{iframe-based document rendering system}, reducing memory consumption by \textbf{50\%} while enabling seamless document viewing for large enterprise files.}
+      \resumeItem{Part of the \textbf{end-to-end implementation} of document processing features by translating business requirements into technical solutions, developing implementation designs, and maintaining regular communication with product owner while ensuring on-time delivery.}
+    \resumeItemListEnd
+
+    \resumeSubSubheading{Predictive Case Strategy (PCS) Platform}{September 2021 -- January 2023}
+    \resumeItemListStart
+      \resumeItem{Developed \textbf{drag-and-drop document workflows} in \textbf{Angular and TypeScript}, enhancing usability for case management by \textbf{37\%.}}
+      \resumeItem{Designed a \textbf{multi-tier backend system} using \textbf{Python (Flask) and AWS Lambda}, enabling scalable document processing and automation.}
+      \resumeItem{Integrated \textbf{JWT-based authentication} to improve security, reducing unauthorized access attempts by \textbf{92\%}.}
+      \resumeItem{Implemented \textbf{ML-powered search algorithms} to improve legal document retrieval, increasing search relevance by \textbf{30\%.}}
+    \resumeItemListEnd
+
+  \resumeSubheading
+      {OpenText}{June 2021 -- July 2021}
+      {Software Development Intern}{Bengaluru, India}
+      \resumeItemListStart
+        \resumeItem{Worked on redesigning UI components using \textbf{Figma}, improving navigation flow and reducing user journey complexity. }
+        \resumeItem{Architected \textbf{RESTful microservices} following best practices for \textbf{multithreading, networking, and performance optimization}, resulting in a \textbf{3.2x} improvement in API response times.}
+        \resumeItem{Implemented \textbf{Spring Boot RESTful APIs}, improving efficiency by \textbf{30\%.}}
+        \resumeItem{Optimized SQL queries, reducing API response times significantly.}
+        \resumeItem{Refactored frontend logic, reducing rendering latency by \textbf{25\%} through JavaScript optimizations.}
+      \resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Projects}
+\resumeSubHeadingListStart
+
+  \resumeProjectHeading
+    {\textbf{Real-Time Chat Application} $|$ \emph{Java, Spring Boot, WebSockets, Redis}}{}
+  \resumeItemListStart
+    \resumeItem{Designed and implemented a \textbf{scalable microservice architecture using Java and Spring Boot}, supporting \textbf{1000+} concurrent users with emphasis on \textbf{performance tuning, threading optimization, and distributed system design principles.}}
+    \resumeItem{Designed an efficient database schema using \textbf{PostgreSQL}, optimizing message retrieval with indexing and partitioning strategies, reducing query execution time by \textbf{40\%}.}
+    \resumeItem{Implemented \textbf{WebSockets} for bidriectional communication, reducing delivery latency to sub-millionseconds speeds.}
+  \resumeItemListEnd
+
+  \resumeProjectHeading
+    {\textbf{Mini Database System (Taco-DB)} $|$ \emph{C++, SQL, DBMS}}{}
+  \resumeItemListStart
+    \resumeItem{Developed a \textbf{multi-layered database system} covering \textbf{storage}, \textbf{indexing (B-tree)}, and \textbf{query processing (joins, external sorting)}.}
+    \resumeItem{Implemented a \textbf{manual query optimization module}, reducing query execution time through efficient execution plans.}
+    \resumeItem{Ensured modular design and maintainability by dividing the system into six subprojects, each focusing on a core database layer.}
+  \resumeItemListEnd
+
+  \resumeProjectHeading
+    {\textbf{URL Shortener} $|$ \emph{Java, Spring Boot, Redis, MySQL}}{}
+  \resumeItemListStart
+    \resumeItem{Developed a \textbf{scalable URL shortener} capable of handling \textbf{1M+ requests per day}.}
+    \resumeItem{Designed a comprehensive monitoring dashboard using \textbf{Grafana} to visualize request patterns and performance metrics.}
+    \resumeItem{Deployed on \textbf{AWS using EC2, S3, and RDS}, ensuring high availability and load balancing.}
+  \resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%-----------TECHNICAL SKILLS-----------
+\section{Technical Skills}
+\resumeSubHeadingListStart
+  \resumeItem{\textbf{Programming Languages:} Java, Python, C++, JavaScript, TypeScript, C, Ruby On Rails}
+  \resumeItem{\textbf{Web Development:} Angular, React.js, HTML5, CSS3, Flask, .NET, PHP, Docker, Node.js, React Native}
+  \resumeItem{\textbf{Databases:} MySQL, PostgreSQL, MongoDB, Redis}
+  \resumeItem{\textbf{Framworks \& Tools:} Springboot,XCode}
+  \resumeItem{\textbf{Cloud Technologies:} AWS (Lambda, S3, EC2, DynamoDB)}
+  \resumeItem{\textbf{DevOps \& CI/CD:} Git, GitHub Actions, Docker}
+  \resumeItem{\textbf{Data Engineering \& APIs:} RESTful APIs, Postman, FastAPI}
+  \resumeItem{\textbf{Security \& Authentication:} JWT, OAuth 2.0, Role-Based Access Control (RBAC)}
+  \resumeItem{\textbf{Networking \& Protocols:} TCP/IP, UDP, WebSockets, HTTP/HTTPS}
+\resumeSubHeadingListEnd
+
+%-----------EDUCATION-----------
+\section{Education}
+\resumeSubHeadingListStart
+
+  \resumeSubheading
+    {State University of New York At Buffalo}{Aug 2023 -- Dec 2024}
+    {Master of Science in Computer Science (\textbf{CGPA: 3.83/4.00})}{Buffalo, New York}
+    \resumeItemListStart
+      \resumeItem{\textbf{Relevant Coursework:} \textbf{Data Structures}, \textbf{Analysis of Algorithms}, \textbf{Computer Security}, \textbf{Machine Learning}, \textbf{Data Intensive Computing}, \textbf{Operating Systems}, \textbf{Networking Concepts}, \textbf{Data Modeling \& Query Languages}.}
+    \resumeItemListEnd
+
+  \resumeSubheading
+    {B.V. Raju Institute of Technology}{Aug 2018 -- June 2022}
+    {Bachelor of Technology in Computer Science (\textbf{CGPA: 9.21/10.00})}{Hyderabad, India}
+    \resumeItemListStart
+      \resumeItem{\textbf{Relevant Coursework:} \textbf{Software Engineering}, \textbf{Object-Oriented Programming}, \textbf{Operating Systems}, \textbf{Java Programming}.}
+    \resumeItemListEnd
+
+\resumeSubHeadingListEnd
+\end{document}
