@@ -35,11 +35,11 @@ inputs:
 output:
   base_dir: data/resume_output
   folder_format: '{company}_{role}'
-  pdf_name: resume.pdf
+  pdf_name: Charuthri_Abburi_Resume.pdf
   artifacts:
     plan: resume_plan.md
     feedback: review_feedback.md
-    latex: resume.tex
+    latex: Charuthri_Abburi_Resume.tex
 latex:
   compiler: pdflatex
   compile_twice: true
@@ -65,18 +65,17 @@ stages:
     description: Generates final LaTeX from plan + feedback
     output_file: resume.tex
 protected_content:
-  name: YATHVIK SAI TRINADH PAPINENI
-  email: yathvik2000@gmail.com
-  phone: (716) 939-8758
-  linkedin: ''
-  github: ''
+  name: Charuthri Abburi
+  email: charuthriabburi05@gmail.com
+  phone: 716-609-3740
+  linkedin: linkedin.com/in/charuthri-abburi
+  github: https://github.com/charuthri05/jobsniper
   education_dates:
     university_at_buffal: '2024'
-    v_r_siddhartha_colle: '2021'
+    jawaharlal_nehru_tec: '2022'
   employment_dates:
-    "guru\u2019s_infotech_inc": 2025-10 -- present
-    rebecca_everlene: 2025-02 -- 2025-10
-    tata_consultancy_services: 2021-07 -- 2023-08
+    linq: 2025-04 -- present
+    opentext: 2021-06 -- 2021-07
 logging:
   level: INFO
   format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

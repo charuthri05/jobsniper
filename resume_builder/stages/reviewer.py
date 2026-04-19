@@ -20,6 +20,7 @@ REVIEW CRITERIA:
 3. IMPACT: Do the bullet points emphasize quantifiable achievements?
 4. KEYWORDS: Are relevant technical keywords from the JD incorporated?
 5. COMPLETENESS: Does the plan cover all resume sections appropriately?
+6. STYLE: Call out any proposed rewrites that (a) use em-dashes ("---", "--", " — ") inside bullet text, (b) narrate internal architecture instead of claiming impact, (c) use filler words ("leveraging", "utilizing", "hands-on", "proactively", "materially", "significantly improved", "cutting-edge", "robust", "seamless"), (d) exceed ~1.5 lines per bullet, or (e) break from the sentence rhythm of the candidate's existing bullets in the template.
 
 OUTPUT FORMAT:
 You MUST respond with exactly these sections in this order:
@@ -34,11 +35,11 @@ GAPS_IDENTIFIED:
 (If no gaps: "No significant gaps identified")
 
 REQUIRED_ADJUSTMENTS:
-### Linq Section
+### Current Role Section
 - [Specific adjustment needed]
 - [Another adjustment]
 
-### AppLogic Section
+### Previous Role Section
 - [Specific adjustment needed]
 
 ### Projects
@@ -46,6 +47,9 @@ REQUIRED_ADJUSTMENTS:
 
 ### Skills
 - [Specific adjustment needed]
+
+### Style
+- [Flag any em-dashes, architecture narration, filler words, or voice mismatches found in the plan]
 
 (If a section needs no changes, write "No adjustments needed")
 
@@ -136,10 +140,10 @@ class ReviewerStage(BaseStage):
 
 ## Source Materials (for verification):
 
-### Linq Experience (Current Role):
+### Current Role Experience:
 {linq_experience}
 
-### AppLogic Experience (Previous Role):
+### Previous Role Experience:
 {applogic_experience}
 
 ### Projects:

@@ -89,7 +89,7 @@ class OutputArtifacts(BaseModel):
 
     plan: str = "resume_plan.md"
     feedback: str = "review_feedback.md"
-    latex: str = "resume.tex"
+    latex: str = "Charuthri_Abburi_Resume.tex"
 
 
 class OutputConfig(BaseModel):
@@ -97,7 +97,7 @@ class OutputConfig(BaseModel):
 
     base_dir: str = "output"
     folder_format: str = "{company}_{role}"
-    pdf_name: str = "Siddartha_Kodaboina_Resume.pdf"
+    pdf_name: str = "Charuthri_Abburi_Resume.pdf"
     artifacts: OutputArtifacts = Field(default_factory=OutputArtifacts)
 
 
