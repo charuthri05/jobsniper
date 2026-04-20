@@ -267,6 +267,120 @@ def clean_auxiliary_files(
     return cleaned
 
 
+def _page_count_from_log(log_content: str) -> int:
+    """Parse the page count from pdflatex's 'Output written on X.pdf (N pages, ...)' line."""
+    match = re.search(r"Output written on \S+\s*\((\d+)\s*pages?", log_content)
+    return int(match.group(1)) if match else 0
+
+
+def _drop_last_project_block(tex_content: str) -> tuple[str, bool]:
+    """Remove the last \\resumeProjectHeading block (heading + its bullet list).
+
+    A project block in the template looks like:
+        \\resumeProjectHeading
+            {...title...}{...}
+        \\resumeItemListStart
+            \\resumeItem{...}
+            \\resumeItem{...}
+        \\resumeItemListEnd
+
+    We find the last \\resumeProjectHeading, scan forward to the next
+    \\resumeItemListEnd, and remove everything from the start of the heading's
+    line through the newline after \\resumeItemListEnd.
+
+    Returns (new_content, dropped_something).
+    """
+    starts = [m.start() for m in re.finditer(r"\\resumeProjectHeading\b", tex_content)]
+    if not starts:
+        return tex_content, False
+
+    last_start = starts[-1]
+    end_match = re.search(r"\\resumeItemListEnd\b", tex_content[last_start:])
+    if not end_match:
+        return tex_content, False
+
+    end_pos = last_start + end_match.end()
+
+    # Expand left to the start of the heading's line
+    line_start = tex_content.rfind("\n", 0, last_start) + 1
+
+    # Expand right past one trailing newline so we don't leave a blank line
+    trailing = end_pos
+    while trailing < len(tex_content) and tex_content[trailing] in " \t":
+        trailing += 1
+    if trailing < len(tex_content) and tex_content[trailing] == "\n":
+        trailing += 1
+
+    return tex_content[:line_start] + tex_content[trailing:], True
+
+
+def compile_with_page_fit(
+    tex_file: Path,
+    max_pages: int = 2,
+    max_drop_attempts: int = 4,
+    output_dir: Optional[Path] = None,
+    output_name: Optional[str] = None,
+    compile_twice: bool = True,
+    clean_aux: bool = True,
+    aux_extensions: Optional[list[str]] = None,
+    timeout: int = 120,
+) -> CompilationResult:
+    """Compile LaTeX, then iteratively drop trailing project blocks until the
+    output fits within max_pages.
+
+    The LLM that writes the LaTeX cannot see the compiled page count, so even
+    with explicit prompting it often overflows. This wrapper provides
+    deterministic backstop: after the first compile, if the PDF is > max_pages,
+    drop the last project block from the .tex and recompile. Repeat up to
+    max_drop_attempts times.
+
+    Only touches \\resumeProjectHeading blocks. Never modifies Experience,
+    Skills, or Education sections. Writes the modified .tex back to disk so it
+    matches the final PDF.
+    """
+    kwargs = dict(
+        output_dir=output_dir,
+        output_name=output_name,
+        compile_twice=compile_twice,
+        clean_aux=clean_aux,
+        aux_extensions=aux_extensions,
+        timeout=timeout,
+    )
+
+    result = compile_latex(tex_file, **kwargs)
+    if not result.success:
+        return result
+
+    pages = _page_count_from_log(result.log_content)
+    if pages == 0 or pages <= max_pages:
+        return result
+
+    logger.info(f"Resume compiled to {pages} pages (over {max_pages}); dropping projects and recompiling")
+
+    tex_content = tex_file.read_text(encoding="utf-8")
+
+    for attempt in range(1, max_drop_attempts + 1):
+        new_content, dropped = _drop_last_project_block(tex_content)
+        if not dropped:
+            logger.warning("No more project blocks to drop; returning current result")
+            break
+
+        tex_content = new_content
+        tex_file.write_text(tex_content, encoding="utf-8")
+
+        result = compile_latex(tex_file, **kwargs)
+        if not result.success:
+            return result
+
+        pages = _page_count_from_log(result.log_content)
+        logger.info(f"Page-fit attempt {attempt}: {pages} pages")
+        if pages <= max_pages:
+            logger.info(f"Resume fit within {max_pages} pages after {attempt} project drop(s)")
+            return result
+
+    return result
+
+
 def check_pdflatex_available() -> tuple[bool, str]:
     """Check if pdflatex is available and return version info."""
     pdflatex = find_pdflatex()

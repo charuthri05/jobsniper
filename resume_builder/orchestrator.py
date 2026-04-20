@@ -15,6 +15,7 @@ from resume_builder.utils import (
     JDMetadata,
     check_pdflatex_available,
     compile_latex,
+    compile_with_page_fit,
     create_output_folder,
     parse_jd,
 )
@@ -253,8 +254,10 @@ class Orchestrator:
             }
 
         pdf_name = self.config.output.pdf_name.replace(".pdf", "")
-        result = compile_latex(
+        result = compile_with_page_fit(
             tex_file=latex_file,
+            max_pages=2,
+            max_drop_attempts=4,
             output_dir=output_dir,
             output_name=pdf_name,
             compile_twice=self.config.latex.compile_twice,
